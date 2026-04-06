@@ -6,12 +6,18 @@ export class AudioController {
     this.el = audioEl;
     this.onEnded = null;
     this.onMissing = null;
+    this.onTimeUpdate = null; // (currentTime, duration) => void
     this.currentSrc = null;
     this._baseVolume = 1.0;
     this._duckTimer = null;
 
     this.el.addEventListener('ended', () => {
       if (this.onEnded) this.onEnded();
+    });
+    this.el.addEventListener('timeupdate', () => {
+      if (this.onTimeUpdate) {
+        this.onTimeUpdate(this.el.currentTime, this.el.duration || 0);
+      }
     });
   }
 

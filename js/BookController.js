@@ -2,7 +2,7 @@
 // audio, Ken Burns, text reveal; trigger SFX on every flip; start music on first play.
 
 import { KenBurns } from './KenBurns.js';
-import { findIllustrationImg, findTextPage } from './buildBook.js';
+import { findIllustrationImg, findTextPage, fitTextToPage } from './buildBook.js';
 
 const IDLE_HINT_DELAY_MS = 3000;
 
@@ -25,13 +25,17 @@ export class BookController {
       this._advanceOrStop();
     };
 
+    this.audio.onTimeUpdate = (t, d) => this._onAudioTime(t, d);
+
     this.pageFlip.on('flip', () => {
       if (this.sfx) this.sfx.playFlip();
       this._clearTimer();
       this._stopKenBurnsAll();
       this._clearRevealAll();
+      this._resetWordsForCurrent();
       this.audio.reset();
       this._loadCurrentPage();
+      this._fitCurrentTextPage();
       this._applyKenBurnsForCurrent();
       if (this.isPlaying) {
         this._revealTextForCurrent();
@@ -43,6 +47,18 @@ export class BookController {
 
     this._loadCurrentPage();
     this._applyKenBurnsForCurrent();
+    // Fit text on all pages once fonts are ready.
+    const fitAll = () => {
+      this.story.pages.forEach((_, i) => {
+        const el = findTextPage(this.bookEl, i);
+        if (el) fitTextToPage(el);
+      });
+    };
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(fitAll);
+    } else {
+      setTimeout(fitAll, 100);
+    }
     this._scheduleIdleHint();
   }
 
@@ -141,6 +157,59 @@ export class BookController {
     });
   }
 
+  _fitCurrentTextPage() {
+    const idx = this.currentStoryPageIndex();
+    const el = findTextPage(this.bookEl, idx);
+    if (el) fitTextToPage(el);
+  }
+
+  _resetWordsForCurrent() {
+    const idx = this.currentStoryPageIndex();
+    const el = findTextPage(this.bookEl, idx);
+    if (!el) return;
+    el.querySelectorAll('.word.spoken').forEach(w => w.classList.remove('spoken'));
+    const quill = el.querySelector('.quill');
+    if (quill) quill.classList.remove('active');
+  }
+
+  _onAudioTime(currentTime, duration) {
+    if (!duration || duration <= 0) return;
+    const idx = this.currentStoryPageIndex();
+    const el = findTextPage(this.bookEl, idx);
+    if (!el) return;
+    const words = el.querySelectorAll('.word');
+    if (words.length === 0) return;
+    const frac = Math.max(0, Math.min(1, currentTime / duration));
+    // Reveal N words where N = floor(frac * totalWords) + 1 once audio has started.
+    const target = currentTime > 0.05 ? Math.min(words.length, Math.floor(frac * words.length) + 1) : 0;
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      if (i < target) {
+        if (!w.classList.contains('spoken')) w.classList.add('spoken');
+      } else {
+        if (w.classList.contains('spoken')) w.classList.remove('spoken');
+      }
+    }
+    // Position quill at the last spoken word's tail.
+    const quill = el.querySelector('.quill');
+    if (!quill) return;
+    if (target === 0) {
+      quill.classList.remove('active');
+      return;
+    }
+    quill.classList.add('active');
+    const lastSpoken = words[target - 1];
+    const bodyEl = el.querySelector('.page-body');
+    if (!lastSpoken || !bodyEl) return;
+    const wordRect = lastSpoken.getBoundingClientRect();
+    const bodyRect = bodyEl.getBoundingClientRect();
+    // Position relative to the text page (el), so use bodyEl's offset.
+    const x = (wordRect.right - bodyRect.left) + bodyEl.offsetLeft;
+    const y = (wordRect.top  - bodyRect.top)  + bodyEl.offsetTop;
+    quill.style.left = `${x}px`;
+    quill.style.top  = `${y}px`;
+  }
+
   _scheduleIdleHint() {
     this._clearIdleHint();
     this._idleTimer = setTimeout(() => {
@@ -173,6 +242,13 @@ export class BookController {
   play() {
     this.isPlaying = true;
     if (this.music) this.music.start();
+    // If on the cover, flip open to the first spread — the flip handler
+    // will then auto-start the page's narration because isPlaying is true.
+    if (this.pageFlip.getCurrentPageIndex() === 0) {
+      this.pageFlip.flipNext();
+      if (this.onChange) this.onChange();
+      return;
+    }
     this._revealTextForCurrent();
     this._playCurrentPage();
     this._resetIdleHint();

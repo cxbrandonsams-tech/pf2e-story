@@ -34,15 +34,15 @@ export function buildBook(story, containerEl) {
   }));
 
   const pageFlip = new window.St.PageFlip(containerEl, {
-    width: 550,
-    height: 733,
+    width: 500,
+    height: 640,
     size: 'stretch',
-    minWidth: 315,
-    maxWidth: 1000,
-    minHeight: 420,
-    maxHeight: 1400,
-    maxShadowOpacity: 0.7,
-    flippingTime: 1400,
+    minWidth: 280,
+    maxWidth: 900,
+    minHeight: 360,
+    maxHeight: 1152,
+    maxShadowOpacity: 0.75,
+    flippingTime: 1200,
     showCover: true,
     usePortrait: false,
     mobileScrollSupport: false,
@@ -114,14 +114,30 @@ function renderTextPage({ text, author, pageNumber, storyIndex }) {
   body.className = 'page-body';
   const paragraphs = (text || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
   if (paragraphs.length === 0) paragraphs.push('');
-  paragraphs.forEach((chunk, i) => {
+
+  let globalWordIndex = 0;
+  paragraphs.forEach((chunk, pi) => {
     const para = document.createElement('p');
     para.className = 'page-paragraph';
-    if (i === 0) para.classList.add('page-paragraph-first');
-    para.textContent = chunk;
+    if (pi === 0) para.classList.add('page-paragraph-first');
+    const words = chunk.split(/\s+/).filter(Boolean);
+    words.forEach((w, wi) => {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.wordIndex = String(globalWordIndex++);
+      span.textContent = w;
+      para.appendChild(span);
+      if (wi < words.length - 1) para.appendChild(document.createTextNode(' '));
+    });
     body.appendChild(para);
   });
   el.appendChild(body);
+
+  // Quill cursor — follows the current spoken word while audio plays.
+  const quill = document.createElement('div');
+  quill.className = 'quill';
+  quill.textContent = '\u{1F58B}'; // 🖋 fountain pen
+  el.appendChild(quill);
 
   const num = document.createElement('div');
   num.className = 'page-number';
@@ -129,4 +145,24 @@ function renderTextPage({ text, author, pageNumber, storyIndex }) {
   el.appendChild(num);
 
   return el;
+}
+
+// Fits body text to the available page height by binary-searching font size.
+// Call after the page is in the DOM and fonts are loaded.
+export function fitTextToPage(textPageEl, maxPx = 22, minPx = 10) {
+  if (!textPageEl) return;
+  const body = textPageEl.querySelector('.page-body');
+  if (!body) return;
+  let lo = minPx, hi = maxPx, best = minPx;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    body.style.fontSize = mid + 'px';
+    if (body.scrollHeight <= body.clientHeight + 1) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  body.style.fontSize = best + 'px';
 }
