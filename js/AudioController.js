@@ -1,19 +1,20 @@
 // Wraps a single <audio> element. Loads per-page audio, plays/pauses,
-// exposes volume/rate, and emits 'ended' to a listener.
+// exposes volume/rate, emits 'ended', and supports brief "ducking" for SFX.
 
 export class AudioController {
   constructor(audioEl) {
     this.el = audioEl;
     this.onEnded = null;
-    this.onMissing = null; // called when current page has no audio
+    this.onMissing = null;
     this.currentSrc = null;
+    this._baseVolume = 1.0;
+    this._duckTimer = null;
 
     this.el.addEventListener('ended', () => {
       if (this.onEnded) this.onEnded();
     });
   }
 
-  // Load (but do not play) a page's audio. Returns true if audio available.
   load(src) {
     if (!src) {
       this.currentSrc = null;
@@ -39,24 +40,29 @@ export class AudioController {
     }
   }
 
-  pause() {
-    this.el.pause();
+  pause() { this.el.pause(); }
+  get isPaused() { return this.el.paused; }
+
+  setVolume(v) {
+    const clamped = Math.max(0, Math.min(1, v));
+    this._baseVolume = clamped;
+    this.el.volume = clamped;
   }
 
-  get isPaused() {
-    return this.el.paused;
-  }
-
-  setVolume(v) { // 0..1
-    this.el.volume = Math.max(0, Math.min(1, v));
-  }
-
-  setRate(r) {
-    this.el.playbackRate = r;
-  }
+  setRate(r) { this.el.playbackRate = r; }
 
   reset() {
     this.el.pause();
     this.el.currentTime = 0;
+  }
+
+  // Temporarily drop volume to 50% of base for `ms` ms, then restore.
+  duck(ms = 400) {
+    if (this._duckTimer != null) clearTimeout(this._duckTimer);
+    this.el.volume = this._baseVolume * 0.5;
+    this._duckTimer = setTimeout(() => {
+      this.el.volume = this._baseVolume;
+      this._duckTimer = null;
+    }, ms);
   }
 }
