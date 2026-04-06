@@ -1,6 +1,10 @@
 {
   "title": "Sample Story",
-  "author": "Brandon",
+  "author": "Brandon Sams",
+  "ambient": {
+    "music": "assets/music/ambient.mp3",
+    "volume": 0.2
+  },
   "cover": {
     "image": "https://placehold.co/800x1000/5a2a13/f0e4c9/png?text=Sample+Story"
   },
@@ -11,20 +15,23 @@
     {
       "image": "https://placehold.co/800x1000/fdf6e3/222222/png?text=Page+1",
       "audio": null,
-      "durationMs": 5000,
-      "text": "Once upon a time, in a land far away..."
+      "durationMs": 8000,
+      "text": "In a world where magic exists the way electricity does in ours, some people choose ordinary lives and some choose dangerous ones. The dangerous ones are called adventurers.",
+      "kenBurns": "zoom-in-center"
     },
     {
       "image": "https://placehold.co/800x1000/fdf6e3/222222/png?text=Page+2",
       "audio": null,
-      "durationMs": 5000,
-      "text": "A brave hero set out on a quest."
+      "durationMs": 8000,
+      "text": "They are not knights in shining armor or legendary heroes. Most are simply skilled people willing to walk into places everyone else avoids.",
+      "kenBurns": "pan-left"
     },
     {
       "image": "https://placehold.co/800x1000/fdf6e3/222222/png?text=Page+3",
       "audio": null,
-      "durationMs": 5000,
-      "text": "And they all lived happily ever after."
+      "durationMs": 8000,
+      "text": "They deal with old ruins, strange creatures, and problems too dangerous for towns to handle alone. They are hired help with swords, spells, and very questionable judgment.",
+      "kenBurns": "zoom-in-right"
     }
   ]
 }
