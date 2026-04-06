@@ -14,3 +14,36 @@ html, body { margin: 0; padding: 0; height: 100%; background: #2b2118; font-fami
   font-size: 16px;
   line-height: 1.4;
 }
+
+#controls {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: #1a1310;
+  border: 1px solid #5a2a13;
+  border-radius: 8px;
+  color: #f0e4c9;
+  font-family: Georgia, serif;
+}
+#controls button {
+  background: #5a2a13;
+  color: #f0e4c9;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+#controls button:hover { background: #7a3a1f; }
+#controls .ctl { display: flex; align-items: center; gap: 6px; }
+#controls select, #controls input[type="range"] {
+  background: #2b2118;
+  color: #f0e4c9;
+  border: 1px solid #5a2a13;
+  border-radius: 4px;
+  padding: 4px;
+}
+.page-indicator { display: flex; align-items: center; gap: 6px; }

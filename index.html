@@ -9,7 +9,30 @@
 <body>
   <div id="app">
     <div id="book"></div>
-    <div id="controls" hidden></div>
+    <div id="controls">
+      <button id="btn-restart" title="Restart">&#9198;</button>
+      <button id="btn-prev" title="Previous page">&#9194;</button>
+      <button id="btn-play" title="Play/Pause">&#9654;</button>
+      <button id="btn-next" title="Next page">&#9193;</button>
+      <span class="page-indicator">
+        Page
+        <select id="page-jump"></select>
+        / <span id="page-total">0</span>
+      </span>
+      <label class="ctl">
+        &#128266;
+        <input id="volume" type="range" min="0" max="100" value="100" />
+      </label>
+      <label class="ctl">
+        Speed
+        <select id="speed">
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+        </select>
+      </label>
+    </div>
     <audio id="narration" preload="auto"></audio>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
