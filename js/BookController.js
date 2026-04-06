@@ -5,6 +5,7 @@ import { KenBurns } from './KenBurns.js';
 import { findIllustrationImg, findTextPage, fitTextToPage } from './buildBook.js';
 
 const IDLE_HINT_DELAY_MS = 3000;
+const MOBILE_ILLUSTRATION_HOLD_MS = 1500;
 
 export class BookController {
   constructor({ story, pageFlip, audio, music, sfx, bookEl }) {
@@ -38,8 +39,16 @@ export class BookController {
       this._fitCurrentTextPage();
       this._applyKenBurnsForCurrent();
       if (this.isPlaying) {
-        this._revealTextForCurrent();
-        this._playCurrentPage();
+        // Mobile portrait: pause briefly on the illustration page, then auto-flip to the text page.
+        if (this._isPortraitMode() && this._isOnIllustrationPage()) {
+          this._timerId = setTimeout(() => {
+            this._timerId = null;
+            if (this.isPlaying) this.pageFlip.flipNext();
+          }, MOBILE_ILLUSTRATION_HOLD_MS);
+        } else {
+          this._revealTextForCurrent();
+          this._playCurrentPage();
+        }
       }
       this._resetIdleHint();
       if (this.onChange) this.onChange();
@@ -73,6 +82,17 @@ export class BookController {
     const contentPages = this.story.pages.length * 2;
     if (bookIdx > contentPages) return -1;
     return (bookIdx - 1) >> 1;
+  }
+
+  _isPortraitMode() {
+    return window.matchMedia('(max-width: 720px)').matches;
+  }
+
+  // A book page is an "illustration page" if its book index is odd AND in content range.
+  _isOnIllustrationPage() {
+    const bookIdx = this.pageFlip.getCurrentPageIndex();
+    const contentPages = this.story.pages.length * 2;
+    return bookIdx >= 1 && bookIdx <= contentPages && (bookIdx % 2 === 1);
   }
 
   currentPageData() {
@@ -122,8 +142,11 @@ export class BookController {
       return;
     }
     this.pageFlip.flipNext();
-    const targetBookIdx = this.pageFlip.getCurrentPageIndex() + 1;
-    setTimeout(() => this.pageFlip.flip(targetBookIdx), 50);
+    if (!this._isPortraitMode()) {
+      // Desktop spread mode: second flip to land on the next spread's left page.
+      const targetBookIdx = this.pageFlip.getCurrentPageIndex() + 1;
+      setTimeout(() => this.pageFlip.flip(targetBookIdx), 50);
+    }
   }
 
   _clearTimer() {
