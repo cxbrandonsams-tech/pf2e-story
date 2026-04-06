@@ -7,14 +7,50 @@ import { UIController } from './UIController.js';
 const bookEl = document.getElementById('book');
 const audioEl = document.getElementById('narration');
 
-loadStory()
-  .then(story => {
-    const pageFlip = buildBook(story, bookEl);
-    const audio = new AudioController(audioEl);
-    const book = new BookController({ story, pageFlip, audio });
-    new UIController({ book, audio });
-  })
-  .catch(err => {
-    console.error(err);
-    bookEl.textContent = `Error: ${err.message}`;
-  });
+function showError(message) {
+  bookEl.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'error-screen';
+  const p = document.createElement('p');
+  p.textContent = message;
+  const btn = document.createElement('button');
+  btn.textContent = 'Reload';
+  btn.addEventListener('click', () => location.reload());
+  div.appendChild(p);
+  div.appendChild(btn);
+  bookEl.appendChild(div);
+}
+
+function showToast(message, ms = 2500) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+
+if (!window.St || !window.St.PageFlip) {
+  showError('Page-flip library failed to load. Check your internet connection.');
+} else {
+  loadStory()
+    .then(story => {
+      const pageFlip = buildBook(story, bookEl);
+      const audio = new AudioController(audioEl);
+      const book = new BookController({ story, pageFlip, audio });
+
+      // Wrap BookController's onMissing to ALSO show a toast.
+      // Important: BookController set audio.onMissing in its constructor;
+      // preserve that handler.
+      const prevOnMissing = audio.onMissing;
+      audio.onMissing = () => {
+        if (prevOnMissing) prevOnMissing();
+        showToast('No audio for this page — click Next to continue');
+      };
+
+      new UIController({ book, audio });
+    })
+    .catch(err => {
+      console.error(err);
+      showError(`Failed to load story: ${err.message}`);
+    });
+}
