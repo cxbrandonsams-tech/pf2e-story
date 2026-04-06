@@ -1,0 +1,30 @@
+{
+  "title": "Sample Story",
+  "author": "Brandon",
+  "cover": {
+    "image": "https://placehold.co/800x1000/5a2a13/f0e4c9/png?text=Sample+Story"
+  },
+  "backCover": {
+    "image": "https://placehold.co/800x1000/5a2a13/f0e4c9/png?text=The+End"
+  },
+  "pages": [
+    {
+      "image": "https://placehold.co/800x1000/fdf6e3/222222/png?text=Page+1",
+      "audio": null,
+      "durationMs": 5000,
+      "text": "Once upon a time, in a land far away..."
+    },
+    {
+      "image": "https://placehold.co/800x1000/fdf6e3/222222/png?text=Page+2",
+      "audio": null,
+      "durationMs": 5000,
+      "text": "A brave hero set out on a quest."
+    },
+    {
+      "image": "https://placehold.co/800x1000/fdf6e3/222222/png?text=Page+3",
+      "audio": null,
+      "durationMs": 5000,
+      "text": "And they all lived happily ever after."
+    }
+  ]
+}
