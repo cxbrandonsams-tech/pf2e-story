@@ -175,6 +175,8 @@ export class BookController {
     el.querySelectorAll('.word.spoken').forEach(w => w.classList.remove('spoken'));
     const quill = el.querySelector('.quill');
     if (quill) quill.classList.remove('active');
+    const bodyEl = el.querySelector('.page-body');
+    if (bodyEl) bodyEl.scrollTop = 0;
   }
 
   _onAudioTime(currentTime, duration) {
@@ -185,7 +187,6 @@ export class BookController {
     const words = el.querySelectorAll('.word');
     if (words.length === 0) return;
     const frac = Math.max(0, Math.min(1, currentTime / duration));
-    // Reveal N words where N = floor(frac * totalWords) + 1 once audio has started.
     const target = currentTime > 0.05 ? Math.min(words.length, Math.floor(frac * words.length) + 1) : 0;
     for (let i = 0; i < words.length; i++) {
       const w = words[i];
@@ -195,20 +196,33 @@ export class BookController {
         if (w.classList.contains('spoken')) w.classList.remove('spoken');
       }
     }
-    // Position quill at the last spoken word's tail.
+
+    const bodyEl = el.querySelector('.page-body');
     const quill = el.querySelector('.quill');
-    if (!quill) return;
     if (target === 0) {
-      quill.classList.remove('active');
+      if (quill) quill.classList.remove('active');
+      if (bodyEl) bodyEl.scrollTop = 0;
       return;
     }
-    quill.classList.add('active');
     const lastSpoken = words[target - 1];
-    const bodyEl = el.querySelector('.page-body');
     if (!lastSpoken || !bodyEl) return;
+
+    // Auto-scroll mobile body so the currently-spoken word stays in view.
+    const isMobile = window.matchMedia('(max-width: 720px)').matches;
+    if (isMobile) {
+      const wordTop = lastSpoken.offsetTop;
+      const target = Math.max(0, wordTop - bodyEl.clientHeight * 0.35);
+      if (Math.abs(bodyEl.scrollTop - target) > 4) {
+        bodyEl.scrollTop = target;
+      }
+    }
+
+    // Quill cursor (desktop mostly — on mobile the scroll does the job)
+    if (!quill) return;
+    if (isMobile) { quill.classList.remove('active'); return; }
+    quill.classList.add('active');
     const wordRect = lastSpoken.getBoundingClientRect();
     const bodyRect = bodyEl.getBoundingClientRect();
-    // Position relative to the text page (el), so use bodyEl's offset.
     const x = (wordRect.right - bodyRect.left) + bodyEl.offsetLeft;
     const y = (wordRect.top  - bodyRect.top)  + bodyEl.offsetTop;
     quill.style.left = `${x}px`;

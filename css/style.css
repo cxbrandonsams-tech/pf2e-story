@@ -53,7 +53,14 @@ body::before {
     max-height: calc(100svh - 180px);
   }
   .page-text-page { padding: 36px 26px 32px 26px; }
-  .page-text-page .page-body { top: 54px; bottom: 48px; left: 26px; right: 26px; }
+  .page-text-page .page-body {
+    top: 54px; bottom: 48px; left: 26px; right: 26px;
+    overflow-y: auto;
+    font-size: 16px !important;  /* override JS-set fit-size on mobile */
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+  }
+  .page-text-page .page-body::-webkit-scrollbar { display: none; }
   .page-text-page .page-author { top: 16px; right: 20px; font-size: 10px; letter-spacing: 2px; }
   .page-text-page .page-number { bottom: 14px; font-size: 11px; }
   .cover-title { font-size: 26px; letter-spacing: 2px; bottom: 10%; }
