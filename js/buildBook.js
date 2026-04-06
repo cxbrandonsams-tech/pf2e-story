@@ -112,10 +112,15 @@ function renderTextPage({ text, author, pageNumber, storyIndex }) {
 
   const body = document.createElement('div');
   body.className = 'page-body';
-  const para = document.createElement('p');
-  para.className = 'page-paragraph';
-  para.textContent = text || '';
-  body.appendChild(para);
+  const paragraphs = (text || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (paragraphs.length === 0) paragraphs.push('');
+  paragraphs.forEach((chunk, i) => {
+    const para = document.createElement('p');
+    para.className = 'page-paragraph';
+    if (i === 0) para.classList.add('page-paragraph-first');
+    para.textContent = chunk;
+    body.appendChild(para);
+  });
   el.appendChild(body);
 
   const num = document.createElement('div');

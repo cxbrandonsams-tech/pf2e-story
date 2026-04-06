@@ -105,21 +105,23 @@ body::before {
   bottom: 60px;
   left: 52px;
   right: 52px;
-  display: flex;
-  align-items: center;
+  overflow-y: auto;
+  padding-right: 8px;
 }
 
 .page-text-page .page-paragraph {
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1.55;
-  margin: 0;
+  margin: 0 0 0.9em 0;
   text-align: left;
   font-family: "EB Garamond", Georgia, serif;
+  text-indent: 1.2em;
 }
+.page-text-page .page-paragraph-first { text-indent: 0; }
 
-.page-text-page .page-paragraph::first-letter {
+.page-text-page .page-paragraph-first::first-letter {
   float: left;
-  font-size: 62px;
+  font-size: 56px;
   line-height: 0.85;
   padding: 4px 8px 0 0;
   font-weight: 600;
