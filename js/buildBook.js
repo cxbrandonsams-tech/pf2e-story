@@ -44,7 +44,7 @@ export function buildBook(story, containerEl) {
     maxShadowOpacity: 0.75,
     flippingTime: 1200,
     showCover: true,
-    usePortrait: false,
+    // omit usePortrait so StPageFlip auto-switches to single-page on narrow viewports
     mobileScrollSupport: false,
   });
 

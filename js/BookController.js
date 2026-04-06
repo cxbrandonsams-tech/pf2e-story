@@ -47,18 +47,23 @@ export class BookController {
 
     this._loadCurrentPage();
     this._applyKenBurnsForCurrent();
-    // Fit text on all pages once fonts are ready.
-    const fitAll = () => {
+    // Fit text on all pages once fonts are ready, and re-fit on resize/orientation.
+    this._fitAllTextPages = () => {
       this.story.pages.forEach((_, i) => {
         const el = findTextPage(this.bookEl, i);
         if (el) fitTextToPage(el);
       });
     };
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(fitAll);
+      document.fonts.ready.then(this._fitAllTextPages);
     } else {
-      setTimeout(fitAll, 100);
+      setTimeout(this._fitAllTextPages, 100);
     }
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => this._fitAllTextPages(), 150);
+    });
     this._scheduleIdleHint();
   }
 
