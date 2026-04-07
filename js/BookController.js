@@ -1,25 +1,20 @@
 // Orchestrates the book: audio/timer → advance full spread; flip → load new spread's
-// audio, Ken Burns, text reveal; trigger SFX on every flip; start music on first play.
+// audio, Ken Burns, and text reveal.
 
 import { KenBurns } from './KenBurns.js';
 import { findIllustrationImg, findTextPage, fitTextToPage } from './buildBook.js';
 
-const IDLE_HINT_DELAY_MS = 3000;
 const MOBILE_ILLUSTRATION_HOLD_MS = 1500;
 
 export class BookController {
-  constructor({ story, pageFlip, audio, music, sfx, bookEl }) {
+  constructor({ story, pageFlip, audio, bookEl }) {
     this.story = story;
     this.pageFlip = pageFlip;
     this.audio = audio;
-    this.music = music;
-    this.sfx = sfx;
     this.bookEl = bookEl;
     this.isPlaying = false;
     this.onChange = null;
     this._timerId = null;
-    this._idleTimer = null;
-    this._lastHintedTextPage = null;
 
     this.audio.onEnded = () => {
       if (!this.isPlaying) return;
@@ -29,7 +24,6 @@ export class BookController {
     this.audio.onTimeUpdate = (t, d) => this._onAudioTime(t, d);
 
     this.pageFlip.on('flip', () => {
-      if (this.sfx) this.sfx.playFlip();
       this._clearTimer();
       this._stopKenBurnsAll();
       this._clearRevealAll();
@@ -39,7 +33,6 @@ export class BookController {
       this._fitCurrentTextPage();
       this._applyKenBurnsForCurrent();
       if (this.isPlaying) {
-        // Mobile portrait: pause briefly on the illustration page, then auto-flip to the text page.
         if (this._isPortraitMode() && this._isOnIllustrationPage()) {
           this._timerId = setTimeout(() => {
             this._timerId = null;
@@ -50,13 +43,12 @@ export class BookController {
           this._playCurrentPage();
         }
       }
-      this._resetIdleHint();
       if (this.onChange) this.onChange();
     });
 
     this._loadCurrentPage();
     this._applyKenBurnsForCurrent();
-    // Fit text on all pages once fonts are ready, and re-fit on resize/orientation.
+
     this._fitAllTextPages = () => {
       this.story.pages.forEach((_, i) => {
         const el = findTextPage(this.bookEl, i);
@@ -73,7 +65,6 @@ export class BookController {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => this._fitAllTextPages(), 150);
     });
-    this._scheduleIdleHint();
   }
 
   currentStoryPageIndex() {
@@ -88,7 +79,6 @@ export class BookController {
     return window.matchMedia('(max-width: 720px)').matches;
   }
 
-  // A book page is an "illustration page" if its book index is odd AND in content range.
   _isOnIllustrationPage() {
     const bookIdx = this.pageFlip.getCurrentPageIndex();
     const contentPages = this.story.pages.length * 2;
@@ -143,7 +133,6 @@ export class BookController {
     }
     this.pageFlip.flipNext();
     if (!this._isPortraitMode()) {
-      // Desktop spread mode: second flip to land on the next spread's left page.
       const targetBookIdx = this.pageFlip.getCurrentPageIndex() + 1;
       setTimeout(() => this.pageFlip.flip(targetBookIdx), 50);
     }
@@ -230,17 +219,15 @@ export class BookController {
     const lastSpoken = words[target - 1];
     if (!lastSpoken || !bodyEl) return;
 
-    // Auto-scroll mobile body so the currently-spoken word stays in view.
     const isMobile = window.matchMedia('(max-width: 720px)').matches;
     if (isMobile) {
       const wordTop = lastSpoken.offsetTop;
-      const target = Math.max(0, wordTop - bodyEl.clientHeight * 0.35);
-      if (Math.abs(bodyEl.scrollTop - target) > 4) {
-        bodyEl.scrollTop = target;
+      const targetScroll = Math.max(0, wordTop - bodyEl.clientHeight * 0.35);
+      if (Math.abs(bodyEl.scrollTop - targetScroll) > 4) {
+        bodyEl.scrollTop = targetScroll;
       }
     }
 
-    // Quill cursor (desktop mostly — on mobile the scroll does the job)
     if (!quill) return;
     if (isMobile) { quill.classList.remove('active'); return; }
     quill.classList.add('active');
@@ -252,40 +239,10 @@ export class BookController {
     quill.style.top  = `${y}px`;
   }
 
-  _scheduleIdleHint() {
-    this._clearIdleHint();
-    this._idleTimer = setTimeout(() => {
-      const idx = this.currentStoryPageIndex();
-      if (idx < 0) return;
-      const el = findTextPage(this.bookEl, idx);
-      if (el) {
-        el.classList.add('hint-corner-lift');
-        this._lastHintedTextPage = el;
-      }
-    }, IDLE_HINT_DELAY_MS);
-  }
-
-  _clearIdleHint() {
-    if (this._idleTimer != null) {
-      clearTimeout(this._idleTimer);
-      this._idleTimer = null;
-    }
-    if (this._lastHintedTextPage) {
-      this._lastHintedTextPage.classList.remove('hint-corner-lift');
-      this._lastHintedTextPage = null;
-    }
-  }
-
-  _resetIdleHint() {
-    this._clearIdleHint();
-    if (!this.isPlaying) this._scheduleIdleHint();
-  }
-
   play() {
     this.isPlaying = true;
-    if (this.music) this.music.start();
-    // If on the cover, flip open to the first spread — the flip handler
-    // will then auto-start the page's narration because isPlaying is true.
+    // If on the cover, flip open to the first spread — the flip handler will
+    // then auto-start the page's narration because isPlaying is true.
     if (this.pageFlip.getCurrentPageIndex() === 0) {
       this.pageFlip.flipNext();
       if (this.onChange) this.onChange();
@@ -293,7 +250,6 @@ export class BookController {
     }
     this._revealTextForCurrent();
     this._playCurrentPage();
-    this._resetIdleHint();
     if (this.onChange) this.onChange();
   }
 
@@ -301,7 +257,6 @@ export class BookController {
     this.isPlaying = false;
     this._clearTimer();
     this.audio.pause();
-    this._resetIdleHint();
     if (this.onChange) this.onChange();
   }
 
@@ -312,15 +267,6 @@ export class BookController {
 
   next() { this.pageFlip.flipNext(); }
   prev() { this.pageFlip.flipPrev(); }
-  jumpTo(bookIndex) { this.pageFlip.flip(bookIndex); }
-
-  restart() {
-    this.pause();
-    this.audio.reset();
-    this._stopKenBurnsAll();
-    this._clearRevealAll();
-    this.pageFlip.flip(0);
-  }
 
   get currentPageNumber() { return this.pageFlip.getCurrentPageIndex() + 1; }
   get totalPages() { return this.pageFlip.getPageCount(); }
