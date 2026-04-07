@@ -33,6 +33,7 @@ export class BookController {
       this._fitCurrentTextPage();
       this._applyKenBurnsForCurrent();
       if (this.isPlaying) {
+        // Mobile portrait: pause briefly on the illustration page, then auto-flip to the text page.
         if (this._isPortraitMode() && this._isOnIllustrationPage()) {
           this._timerId = setTimeout(() => {
             this._timerId = null;
@@ -48,7 +49,7 @@ export class BookController {
 
     this._loadCurrentPage();
     this._applyKenBurnsForCurrent();
-
+    // Fit text on all pages once fonts are ready, and re-fit on resize/orientation.
     this._fitAllTextPages = () => {
       this.story.pages.forEach((_, i) => {
         const el = findTextPage(this.bookEl, i);
@@ -79,6 +80,7 @@ export class BookController {
     return window.matchMedia('(max-width: 720px)').matches;
   }
 
+  // A book page is an "illustration page" if its book index is odd AND in content range.
   _isOnIllustrationPage() {
     const bookIdx = this.pageFlip.getCurrentPageIndex();
     const contentPages = this.story.pages.length * 2;
