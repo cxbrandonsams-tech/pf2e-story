@@ -16,6 +16,7 @@ export class UIController {
     this.speed       = document.getElementById('speed');
 
     this._bindEvents();
+    this._initFromDOM();
     this._sync();
 
     this.book.onChange = () => this._sync();
@@ -46,8 +47,9 @@ export class UIController {
       if (e.key === 'ArrowRight') { this.book.next(); }
       if (e.key === ' ')          { e.preventDefault(); this.book.toggle(); }
     });
+  }
 
-    // Seed initial state from the DOM values
+  _initFromDOM() {
     if (this.volume) {
       const v = Number(this.volume.value);
       this.audio.setVolume(v / 100);
