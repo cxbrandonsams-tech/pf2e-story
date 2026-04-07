@@ -1,53 +1,307 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Interactive Storybook</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Otari</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Work+Sans:wght@300;400;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-container-lowest": "#0b0e13",
+            "surface-container": "#1d2025",
+            "on-surface": "#e1e2e9",
+            "background": "#101418",
+            "on-primary-fixed": "#301400",
+            "on-secondary-fixed": "#071d31",
+            "surface-container-highest": "#32353a",
+            "outline-variant": "#554337",
+            "surface-container-low": "#191c21",
+            "on-tertiary-container": "#3d2313",
+            "on-primary-fixed-variant": "#703700",
+            "on-primary-container": "#452000",
+            "tertiary-fixed-dim": "#eabda5",
+            "secondary-fixed": "#d2e4ff",
+            "on-secondary": "#1f3247",
+            "secondary": "#b5c8e4",
+            "on-tertiary-fixed": "#2d1607",
+            "error": "#ffb4ab",
+            "inverse-primary": "#934b00",
+            "secondary-fixed-dim": "#b5c8e4",
+            "tertiary-container": "#b08872",
+            "tertiary": "#eabda5",
+            "on-surface-variant": "#dbc2b1",
+            "primary": "#ffb782",
+            "outline": "#a38c7e",
+            "inverse-on-surface": "#2e3136",
+            "primary-fixed-dim": "#ffb782",
+            "on-background": "#e1e2e9",
+            "on-tertiary": "#452a19",
+            "surface-tint": "#ffb782",
+            "on-secondary-fixed-variant": "#35485f",
+            "on-secondary-container": "#a3b7d2",
+            "surface": "#101418",
+            "surface-container-high": "#272a2f",
+            "error-container": "#93000a",
+            "surface-bright": "#36393f",
+            "inverse-surface": "#e1e2e9",
+            "tertiary-fixed": "#ffdbc9",
+            "secondary-container": "#35485f",
+            "surface-dim": "#101418",
+            "surface-variant": "#32353a",
+            "primary-container": "#d87821",
+            "on-primary": "#4f2500",
+            "on-error": "#690005",
+            "primary-fixed": "#ffdcc5",
+            "on-error-container": "#ffdad6",
+            "on-tertiary-fixed-variant": "#5e402e"
+          },
+          borderRadius: {
+            DEFAULT: "0.25rem",
+            lg: "0.5rem",
+            xl: "0.75rem",
+            full: "9999px"
+          },
+          fontFamily: {
+            headline: ["Noto Serif"],
+            body: ["Newsreader"],
+            label: ["Work Sans"]
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+
+    .material-symbols-outlined { font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24; }
+    .glow-sm { filter: drop-shadow(0 0 5px rgba(255, 183, 130, 0.5)); }
+
+    .parchment-texture { background-color: #f4e4bc; position: relative; }
+    .parchment-texture::before {
+      content: ""; position: absolute; inset: 0;
+      background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDnrW5Rf3TCvMBbyA7wjhMuUFa3pdUXs1Mbtuih842cukGdCY_ikBKDjiLeoPj9gS9Jhhzu54T9CAd4XyJ_S6LlnZJuWWEmqQPoTRHrgC2afEIOo5aCm_SGLSYLApYXiWTKojR92d0Og2wnzylcdfJDSB3c_YxiDrbsxG0qoCiCgwZ4jo2QPCttwSGOc-893SSnnqd57mDVIxMLwY7K2i11q68Qqks7KjaOJwbILZqqesrHYJ5Sx7buronkfteEhrnhu4X3xbfs230);
+      opacity: 0.2; pointer-events: none;
+    }
+
+    .desk-bg { background: radial-gradient(circle at center, #2d1b0e 0%, #101418 100%); }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(45, 27, 14, 0.2); border-radius: 10px; }
+
+    /* Ken Burns keyframes — must match the names that KenBurns.js writes as inline animation */
+    @keyframes kb-zoom-in-center {
+      from { transform: scale(1.0) translate(0, 0); }
+      to   { transform: scale(1.10) translate(0, 0); }
+    }
+    @keyframes kb-zoom-in-left {
+      from { transform: scale(1.0) translate(0, 0); }
+      to   { transform: scale(1.12) translate(-3%, 0); }
+    }
+    @keyframes kb-zoom-in-right {
+      from { transform: scale(1.0) translate(0, 0); }
+      to   { transform: scale(1.12) translate(3%, 0); }
+    }
+    @keyframes kb-zoom-out {
+      from { transform: scale(1.12); }
+      to   { transform: scale(1.0); }
+    }
+    @keyframes kb-pan-left {
+      from { transform: scale(1.08) translate(3%, 0); }
+      to   { transform: scale(1.08) translate(-3%, 0); }
+    }
+    @keyframes kb-pan-right {
+      from { transform: scale(1.08) translate(-3%, 0); }
+      to   { transform: scale(1.08) translate(3%, 0); }
+    }
+    .kb-active { animation-fill-mode: forwards; }
+
+    /* Word-sync highlighting — unspoken words sit faint, spoken words brighten */
+    .page-text-page .word {
+      opacity: 0.35;
+      transition: opacity 280ms ease-out;
+    }
+    .page-text-page .word.spoken { opacity: 1; }
+    .page-text-page:not(.reveal) .word { opacity: 1; }
+
+    /* Reveal animation when the text page first appears */
+    .page-text-page.reveal .page-body {
+      animation: text-fade-in 800ms ease-out;
+    }
+    @keyframes text-fade-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Quill cursor — tracks the last-spoken word on desktop */
+    .page-text-page .quill {
+      position: absolute;
+      font-size: 24px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-2px, -18px) rotate(-15deg);
+      transition: left 220ms ease-out, top 220ms ease-out, opacity 220ms;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+    }
+    .page-text-page .quill.active {
+      opacity: 1;
+      animation: quill-bob 700ms ease-in-out infinite;
+    }
+    @keyframes quill-bob {
+      0%, 100% { transform: translate(-2px, -18px) rotate(-15deg); }
+      50%      { transform: translate(-2px, -22px) rotate(-18deg); }
+    }
+
+    /* Voice slider — styled to match Stitch's gradient track + glowing thumb */
+    input[type="range"]#volume {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(to right, #ffb782 var(--vol, 100%), #32353a var(--vol, 100%));
+      border-radius: 9999px;
+      outline: none;
+      cursor: pointer;
+      margin: 0;
+    }
+    input[type="range"]#volume::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 9999px;
+      background: #ffb782;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 15px rgba(255, 183, 130, 0.8);
+      cursor: pointer;
+    }
+    input[type="range"]#volume::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 9999px;
+      background: #ffb782;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 15px rgba(255, 183, 130, 0.8);
+      cursor: pointer;
+    }
+
+    /* Error screen + toast (carried over from the old stylesheet) */
+    .error-screen {
+      color: #f0e4c9;
+      background: #3a1a10;
+      border: 1px solid #7a3a1f;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 500px;
+      text-align: center;
+      margin: auto;
+    }
+    .error-screen button {
+      margin-top: 12px;
+      padding: 8px 16px;
+      background: #5a2a13;
+      color: #f0e4c9;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(26, 14, 7, 0.95);
+      color: #f0e4c9;
+      padding: 10px 18px;
+      border-radius: 6px;
+      z-index: 1000;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 720px) {
+      .book-outer-frame { --tw-ring-offset-width: 0; }
+      /* Make the text body scrollable on mobile so word-sync auto-scroll can track
+         the currently-spoken word; override the JS-set font size with a readable default. */
+      .page-text-page .page-body {
+        overflow-y: auto !important;
+        font-size: 16px !important;
+        scroll-behavior: smooth;
+        scrollbar-width: none;
+      }
+      .page-text-page .page-body::-webkit-scrollbar { display: none; }
+    }
+  </style>
 </head>
-<body>
-  <div id="app">
-    <div id="book"></div>
-    <div id="controls">
-      <button id="btn-restart" title="Restart">&#9198;</button>
-      <button id="btn-prev" title="Previous page">&#9194;</button>
-      <button id="btn-play" title="Play/Pause">&#9654;</button>
-      <button id="btn-next" title="Next page">&#9193;</button>
-      <span class="page-indicator">
-        Page
-        <select id="page-jump"></select>
-        / <span id="page-total">0</span>
-      </span>
-      <span class="music-wrapper" id="music-wrapper">
-        <button id="btn-music" title="Music">&#127925;</button>
-        <div class="music-popover">
-          <label class="ctl">
-            Music
-            <input id="music-volume" type="range" min="0" max="100" value="20" />
-          </label>
-        </div>
-      </span>
-      <label class="ctl">
-        Voice &#128266;
-        <input id="volume" type="range" min="0" max="100" value="100" />
-      </label>
-      <label class="ctl">
-        Speed
-        <select id="speed">
-          <option value="0.75">0.75x</option>
-          <option value="1" selected>1x</option>
-          <option value="1.25">1.25x</option>
-          <option value="1.5">1.5x</option>
-        </select>
-      </label>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30 min-h-screen flex flex-col overflow-hidden desk-bg">
+
+  <!-- Top app bar -->
+  <header class="bg-[#101418] flex justify-between items-center w-full px-8 py-4 z-50 shadow-2xl shadow-black/60 sticky top-0">
+    <h1 id="story-title" class="font-['Noto_Serif'] font-bold tracking-tight text-2xl md:text-3xl text-[#ffb782] drop-shadow-sm"></h1>
+  </header>
+
+  <!-- Main book area -->
+  <main class="flex-grow flex items-center justify-center p-4 md:p-8 lg:p-12 relative">
+    <!-- Floating dust/motes decoration -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+      <div class="absolute top-1/4 left-1/4 w-1 h-1 bg-primary rounded-full blur-[1px]"></div>
+      <div class="absolute top-3/4 left-1/3 w-1.5 h-1.5 bg-secondary rounded-full blur-[2px]"></div>
+      <div class="absolute top-1/2 right-1/4 w-1 h-1 bg-primary rounded-full blur-[1px]"></div>
     </div>
-    <audio id="narration" preload="auto"></audio>
-    <audio id="music" preload="auto" loop></audio>
-  </div>
+    <!-- Dark wood book frame (decorative; StPageFlip mounts inside) -->
+    <div class="book-outer-frame relative w-full max-w-6xl aspect-[16/10] bg-[#2d1b0e] rounded-xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] p-2 md:p-4 ring-2 md:ring-8 ring-[#1a0f08] overflow-hidden">
+      <div id="book" class="w-full h-full"></div>
+    </div>
+  </main>
+
+  <!-- Footer control bar -->
+  <footer class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 md:px-12 pb-6 md:pb-8 pt-4 bg-gradient-to-t from-black/80 to-transparent">
+    <div class="flex flex-wrap justify-center items-center gap-6 md:gap-12 bg-[#1b1f23]/90 backdrop-blur-xl px-6 md:px-12 py-3 md:py-4 rounded-3xl md:rounded-full shadow-2xl border border-white/5">
+      <!-- Navigation -->
+      <div class="flex gap-4 items-center">
+        <button id="btn-prev" class="flex flex-col items-center justify-center text-[#b5c8e4]/40 p-3 md:p-4 hover:text-[#ffb782] hover:scale-110 transition-transform active:brightness-125">
+          <span class="material-symbols-outlined text-2xl mb-1">arrow_back_ios</span>
+          <span class="font-['Work_Sans'] text-[10px] uppercase tracking-widest">Previous</span>
+        </button>
+        <button id="btn-play" class="flex flex-col items-center justify-center bg-[#d87821]/20 text-[#ffb782] rounded-full px-5 md:px-6 py-3 md:py-4 ring-1 ring-[#ffb782]/30 hover:glow-sm transition-all active:brightness-125">
+          <span id="btn-play-icon" class="material-symbols-outlined text-3xl mb-1" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+          <span class="font-['Work_Sans'] text-[10px] uppercase tracking-widest">Chronicle</span>
+        </button>
+        <button id="btn-next" class="flex flex-col items-center justify-center text-[#b5c8e4]/40 p-3 md:p-4 hover:text-[#ffb782] hover:scale-110 transition-transform active:brightness-125">
+          <span class="material-symbols-outlined text-2xl mb-1">arrow_forward_ios</span>
+          <span class="font-['Work_Sans'] text-[10px] uppercase tracking-widest">Next</span>
+        </button>
+      </div>
+
+      <!-- Voice slider + speed dropdown -->
+      <div class="flex items-center gap-4 md:gap-6 md:border-l md:border-white/10 md:pl-12">
+        <div class="flex flex-col gap-2 w-40 md:w-48">
+          <div class="flex justify-between items-center mb-1">
+            <label for="volume" class="font-label text-[10px] uppercase tracking-widest text-[#b5c8e4]/60">Voice Resonance</label>
+            <span id="volume-label" class="text-primary text-[10px] font-bold">100%</span>
+          </div>
+          <input id="volume" type="range" min="0" max="100" value="100"/>
+        </div>
+        <div class="relative">
+          <select id="speed" class="bg-surface-container-high hover:bg-surface-bright px-3 md:px-4 py-2 rounded-xl border border-white/5 font-label text-xs uppercase tracking-widest text-on-surface appearance-none cursor-pointer">
+            <option value="0.8">Slow</option>
+            <option value="1" selected>Normal</option>
+            <option value="1.2">Swift</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <audio id="narration" preload="auto"></audio>
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
