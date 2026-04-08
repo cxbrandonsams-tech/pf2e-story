@@ -102,6 +102,11 @@ export class BookController {
     fresh.className = this._bookOriginalClass;
     this._bookParent.appendChild(fresh);
     this.bookEl = fresh;
+    // Update _currentLayout BEFORE buildBook runs. The synchronous resize that
+    // StPageFlip fires during construction can re-trigger our matchMedia listener
+    // mid-rebuild on some engines; the early-return guard at the top of this
+    // method relies on _currentLayout already matching newLayout to suppress
+    // that reentrant call.
     this._currentLayout = newLayout;
     this.pageFlip = buildBook(this.story, this.bookEl, { layout: newLayout });
     this._wirePageFlipEvents();
