@@ -50,22 +50,37 @@ export function buildBook(story, containerEl, options = {}) {
     title: 'The End',
   }));
 
-  const pageFlip = new window.St.PageFlip(containerEl, {
+  // StPageFlip's orientation auto-detection (in `size: 'stretch'` mode) is
+  // gated by `containerWidth < 2 * minWidth`. The minWidth therefore plays
+  // double duty:
+  //   - Spread layout (desktop): minWidth must be SMALLER than half the
+  //     container width so the auto-detect picks landscape. 280 keeps the
+  //     threshold (560) below typical desktop widths (≥800).
+  //   - Portrait layout (small viewports): minWidth must be LARGER than half
+  //     the container width so the auto-detect picks portrait. The largest
+  //     small-viewport book container we care about is ~366 (mobile portrait
+  //     phone in this app), so minWidth: 190 makes the threshold 380 — above
+  //     366 and well above the ~195 we get on a phone in landscape. 190 also
+  //     stays under 195 so the wrapper's CSS min-width (which equals
+  //     config.minWidth in portrait mode) doesn't overflow the landscape
+  //     phone's narrow book frame.
+  const isPortraitLayout = layout === 'portrait';
+  const pageFlipOpts = {
     width: 500,
     height: 640,
     size: 'stretch',
-    minWidth: 280,
+    minWidth: isPortraitLayout ? 190 : 280,
     maxWidth: 900,
-    minHeight: 360,
+    minHeight: 220,
     maxHeight: 1152,
     // Disable page-flip shadow gradients so the parchment surface stays one solid
     // color. CSS in index.html also hides any leftover .stf__*Shadow nodes.
     maxShadowOpacity: 0,
     flippingTime: 1200,
     showCover: true,
-    // omit usePortrait so StPageFlip auto-switches to single-page on narrow viewports
     mobileScrollSupport: false,
-  });
+  };
+  const pageFlip = new window.St.PageFlip(containerEl, pageFlipOpts);
 
   pageFlip.loadFromHTML(containerEl.querySelectorAll('.page'));
 
@@ -264,12 +279,6 @@ function renderMergedPage({
   footer.innerHTML = `<span class="font-label text-[9px] tracking-widest text-[#3d2313]/60 uppercase">Page ${pageNumber} — ${escapeText(storyTitle)}</span>`;
   inner.appendChild(footer);
 
-  // ---- Rune corner decoration (matches text page) ----
-  const rune = document.createElement('div');
-  rune.className = 'absolute bottom-6 right-6 text-black/10 select-none pointer-events-none';
-  rune.innerHTML = `<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">storm</span>`;
-  el.appendChild(rune);
-
   return el;
 }
 
@@ -355,18 +364,15 @@ function renderTextPage({ text, chapter, storyTitle, pageNumber, storyIndex }) {
   inner.appendChild(footer);
 
   // Quill cursor — positioned absolutely against .page-text-page (NOT inner)
-  // because BookController._onAudioTime computes its coordinates from the body
-  // element's offsetParent chain.
-  const quill = document.createElement('div');
-  quill.className = 'quill';
-  quill.textContent = '\u{1F58B}'; // fountain pen
+  // because BookController._onAudioTime computes its coordinates from the
+  // page-text-page element. Rendered as a Material Symbol so CSS `color` is
+  // honored — the previous fountain-pen emoji rendered as colored emoji on
+  // every platform we tested and ignored the dark color we wanted.
+  const quill = document.createElement('span');
+  quill.className = 'quill material-symbols-outlined';
+  quill.style.fontVariationSettings = "'FILL' 1";
+  quill.textContent = 'draw';
   el.appendChild(quill);
-
-  // Rune corner decoration
-  const rune = document.createElement('div');
-  rune.className = 'absolute bottom-8 right-8 text-black/10 select-none pointer-events-none';
-  rune.innerHTML = `<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">storm</span>`;
-  el.appendChild(rune);
 
   return el;
 }

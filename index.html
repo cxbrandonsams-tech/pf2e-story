@@ -13,7 +13,18 @@
     tailwind.config = {
       darkMode: "class",
       theme: {
+        // Custom screen aliases used for the chrome around the book.
+        // - `big`: only matches when BOTH viewport dimensions are >720px,
+        //   i.e. desktop / large tablet. Used for header + footer styling
+        //   so a phone in landscape (e.g. 844×390) keeps the compact mobile
+        //   chrome instead of upgrading to the desktop pill on width alone.
+        //   Tailwind's default `md:` (≥768px width) doesn't have a
+        //   height-aware equivalent.
+        // The default md/lg/xl/2xl breakpoints are kept for everything else.
         extend: {
+          screens: {
+            big: { raw: '(min-width: 721px) and (min-height: 721px)' },
+          },
           colors: {
             "surface-container-lowest": "#0b0e13",
             "surface-container": "#1d2025",
@@ -110,6 +121,36 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(45, 27, 14, 0.2); border-radius: 10px; }
 
+    /* Auto-scroll uses instant scrollTop assignments (no scroll-behavior:
+       smooth). The reasons:
+       1. The BookController's leading-edge scroll fires at most once every
+          ~30 lines of text, so chunky jumps are intentional and visible.
+       2. With smooth scrolling enabled, scrollTop reads return the
+          in-flight animation value, which makes the user-activity detector
+          (compare current scrollTop to last assigned) wildly unreliable.
+       3. The smooth animation can race the next audio timeupdate and
+          produce visual jitter. */
+
+    /* Book frame aspect ratio. Default is the desktop landscape spread; any
+       small viewport (either dimension ≤720px — which catches phones in
+       both portrait AND landscape) gets a portrait book that pairs with the
+       merged layout the BookController switches to via the same media query.
+       Using a custom CSS rule rather than Tailwind's `md:` modifier so the
+       breakpoint matches the BookController's matchMedia query exactly.
+       The width/height pair below is critical: w-full + max-h-full would
+       break the aspect ratio when one dimension is constrained, so we drop
+       both and let aspect-ratio drive the box sized to fit the parent. */
+    .book-outer-frame {
+      aspect-ratio: 7 / 5;
+      width: auto;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+    }
+    @media (max-width: 720px), (max-height: 720px) {
+      .book-outer-frame { aspect-ratio: 5 / 7; }
+    }
+
     /* Ken Burns keyframes — must match the names that KenBurns.js writes as inline animation */
     @keyframes kb-zoom-in-center {
       from { transform: scale(1.0) translate(0, 0); }
@@ -158,15 +199,18 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* Quill cursor — tracks the last-spoken word on desktop */
+    /* Quill cursor — tracks the last-spoken word on desktop. Rendered as a
+       solid dark glyph so it stays legible on the parchment background; the
+       white fountain-pen emoji washed out and was hard to spot. */
     .page-text-page .quill {
       position: absolute;
-      font-size: 24px;
+      font-size: 22px;
+      color: #2d1607;
       pointer-events: none;
       opacity: 0;
       transform: translate(-2px, -18px) rotate(-15deg);
       transition: left 220ms ease-out, top 220ms ease-out, opacity 220ms;
-      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+      filter: drop-shadow(0 1px 1px rgba(255, 220, 197, 0.35));
     }
     .page-text-page .quill.active {
       opacity: 1;
@@ -243,124 +287,83 @@
     }
 
     /* Mobile adjustments */
-    @media (max-width: 720px) {
+    @media (max-width: 720px), (max-height: 720px) {
       .book-outer-frame { --tw-ring-offset-width: 0; }
-      /* Make the text body scrollable on mobile so word-sync auto-scroll can track
-         the currently-spoken word; override the JS-set font size with a readable default. */
+      /* Make the text body scrollable on small screens so word-sync auto-scroll
+         can track the currently-spoken word; override the JS-set font size with
+         a readable default. No smooth scroll — see comment above for reasons. */
       .page-text-page .page-body,
       .page-merged .page-body {
         overflow-y: auto !important;
         font-size: 16px !important;
-        scroll-behavior: smooth;
         scrollbar-width: none;
       }
       .page-text-page .page-body::-webkit-scrollbar,
       .page-merged .page-body::-webkit-scrollbar { display: none; }
     }
 
-    /* Rotate hint toast — shown only on first portrait-mobile load by RotateHint.js. */
-    #rotate-hint {
-      position: fixed;
-      top: 64px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px 8px 12px;
-      background: rgba(26, 14, 7, 0.92);
-      color: #ffb782;
-      border: 1px solid rgba(255, 183, 130, 0.3);
-      border-radius: 999px;
-      font-family: 'Work Sans', sans-serif;
-      font-size: 12px;
-      letter-spacing: 0.05em;
-      backdrop-filter: blur(6px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      opacity: 0;
-      transition: opacity 280ms ease-out;
-      z-index: 1100;
-      pointer-events: auto;
-    }
-    #rotate-hint[hidden] { display: none; }
-    #rotate-hint .material-symbols-outlined { font-size: 18px; }
-    #rotate-hint .rotate-hint-label { line-height: 1; }
-    #rotate-hint #rotate-hint-close {
-      background: transparent;
-      border: 0;
-      color: rgba(255, 183, 130, 0.7);
-      font-size: 18px;
-      line-height: 1;
-      padding: 0 4px;
-      cursor: pointer;
-    }
-    #rotate-hint #rotate-hint-close:hover { color: #ffb782; }
   </style>
 </head>
 <body class="bg-background text-on-surface font-body selection:bg-primary/30 min-h-screen flex flex-col overflow-hidden desk-bg">
 
-  <!-- Rotate hint toast — shown only on first portrait-mobile load by js/RotateHint.js -->
-  <div id="rotate-hint" hidden role="status" aria-live="polite">
-    <span class="material-symbols-outlined" aria-hidden="true">screen_rotation</span>
-    <span class="rotate-hint-label">Rotate for the full spread</span>
-    <button id="rotate-hint-close" type="button" aria-label="Dismiss">×</button>
-  </div>
-
   <!-- Tailwind Play CDN safelist: classes added dynamically via innerHTML in js/buildBook.js
        aren't always caught by the CDN's MutationObserver. Referencing them in a hidden node
        forces the CDN to generate the corresponding rules during its initial scan. -->
-  <div class="hidden md:p-16 md:text-4xl text-3xl aspect-[5/7] md:aspect-[7/5]"></div>
+  <div class="hidden md:p-16 md:text-4xl text-3xl"></div>
 
-  <!-- Top app bar -->
-  <header class="bg-[#101418] flex justify-between items-center w-full px-8 py-3 z-50 shadow-2xl shadow-black/60 sticky top-0 shrink-0">
-    <h1 id="story-title" class="font-['Noto_Serif'] font-bold tracking-tight text-2xl md:text-3xl text-[#ffb782] drop-shadow-sm"></h1>
+  <!-- Top app bar — compact on mobile (any small dimension), big chrome only
+       when BOTH viewport dimensions are >720px (the `big:` custom screen). -->
+  <header class="bg-[#101418] flex justify-between items-center w-full px-3 big:px-8 py-1.5 big:py-3 z-50 shadow-2xl shadow-black/60 sticky top-0 shrink-0">
+    <h1 id="story-title" class="font-['Noto_Serif'] font-bold tracking-tight text-base big:text-3xl text-[#ffb782] drop-shadow-sm"></h1>
   </header>
 
   <!-- Main book area — minimal padding so the book frame can fill the gap between header and footer -->
-  <main class="flex-grow flex items-center justify-center p-3 md:p-4 lg:p-6 relative min-h-0">
+  <main class="flex-grow flex items-center justify-center p-1.5 big:p-4 lg:p-6 relative min-h-0">
     <!-- Floating dust/motes decoration -->
     <div class="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
       <div class="absolute top-1/4 left-1/4 w-1 h-1 bg-primary rounded-full blur-[1px]"></div>
       <div class="absolute top-3/4 left-1/3 w-1.5 h-1.5 bg-secondary rounded-full blur-[2px]"></div>
       <div class="absolute top-1/2 right-1/4 w-1 h-1 bg-primary rounded-full blur-[1px]"></div>
     </div>
-    <!-- Dark wood book frame (decorative; StPageFlip mounts inside).
-         Mobile is portrait (taller than wide); desktop is landscape spread. -->
-    <div class="book-outer-frame relative w-full max-w-6xl aspect-[5/7] md:aspect-[7/5] max-h-full bg-[#2d1b0e] rounded-xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] p-2 md:p-4 ring-2 md:ring-8 ring-[#1a0f08] overflow-hidden">
+    <!-- Dark wood book frame (decorative; StPageFlip mounts inside). Aspect
+         ratio is set in the <style> block via the matching custom media query
+         so it stays in lock-step with the BookController's matchMedia. -->
+    <div class="book-outer-frame relative max-w-6xl bg-[#2d1b0e] rounded-xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] p-1.5 big:p-4 ring-2 big:ring-8 ring-[#1a0f08] overflow-hidden">
       <div id="book" class="w-full h-full"></div>
     </div>
   </main>
 
-  <!-- Footer control bar — in normal flow (not fixed) so main can size around it -->
-  <footer class="w-full z-50 flex justify-around items-center px-6 md:px-12 pb-4 md:pb-6 pt-3 bg-gradient-to-t from-black/80 to-transparent shrink-0">
-    <div class="flex flex-wrap justify-center items-center gap-6 md:gap-12 bg-[#1b1f23]/90 backdrop-blur-xl px-6 md:px-12 py-2 md:py-3 rounded-3xl md:rounded-full shadow-2xl border border-white/5">
+  <!-- Footer control bar — compact on small viewports, full size on `big:`
+       (both dimensions >720px). -->
+  <footer class="w-full z-50 flex justify-around items-center px-2 big:px-12 pb-2 big:pb-6 pt-1.5 big:pt-3 bg-gradient-to-t from-black/80 to-transparent shrink-0">
+    <div class="flex flex-wrap justify-center items-center gap-2 big:gap-12 bg-[#1b1f23]/90 backdrop-blur-xl px-3 big:px-12 py-1 big:py-3 rounded-2xl big:rounded-full shadow-2xl border border-white/5">
       <!-- Navigation -->
-      <div class="flex gap-4 items-center">
-        <button id="btn-prev" class="flex flex-col items-center justify-center text-[#b5c8e4]/40 p-3 md:p-4 hover:text-[#ffb782] hover:scale-110 transition-transform active:brightness-125">
-          <span class="material-symbols-outlined text-2xl mb-1">arrow_back_ios</span>
-          <span class="font-['Work_Sans'] text-[10px] uppercase tracking-widest">Previous</span>
+      <div class="flex gap-1 big:gap-4 items-center">
+        <button id="btn-prev" class="flex flex-col items-center justify-center text-[#b5c8e4]/60 big:text-[#b5c8e4]/40 p-1 big:p-4 hover:text-[#ffb782] hover:scale-110 transition-transform active:brightness-125">
+          <span class="material-symbols-outlined text-base big:text-2xl big:mb-1">arrow_back_ios</span>
+          <span class="font-['Work_Sans'] text-[8px] big:text-[10px] uppercase tracking-widest">Previous</span>
         </button>
-        <button id="btn-play" class="flex flex-col items-center justify-center bg-[#d87821]/20 text-[#ffb782] rounded-full px-5 md:px-6 py-3 md:py-4 ring-1 ring-[#ffb782]/30 hover:glow-sm transition-all active:brightness-125">
-          <span id="btn-play-icon" class="material-symbols-outlined text-3xl mb-1" style="font-variation-settings: 'FILL' 1;">menu_book</span>
-          <span class="font-['Work_Sans'] text-[10px] uppercase tracking-widest">Chronicle</span>
+        <button id="btn-play" class="flex flex-col items-center justify-center bg-[#d87821]/20 text-[#ffb782] rounded-full px-3 big:px-6 py-1 big:py-4 ring-1 ring-[#ffb782]/30 hover:glow-sm transition-all active:brightness-125">
+          <span id="btn-play-icon" class="material-symbols-outlined text-xl big:text-3xl big:mb-1" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+          <span class="font-['Work_Sans'] text-[8px] big:text-[10px] uppercase tracking-widest">Play</span>
         </button>
-        <button id="btn-next" class="flex flex-col items-center justify-center text-[#b5c8e4]/40 p-3 md:p-4 hover:text-[#ffb782] hover:scale-110 transition-transform active:brightness-125">
-          <span class="material-symbols-outlined text-2xl mb-1">arrow_forward_ios</span>
-          <span class="font-['Work_Sans'] text-[10px] uppercase tracking-widest">Next</span>
+        <button id="btn-next" class="flex flex-col items-center justify-center text-[#b5c8e4]/60 big:text-[#b5c8e4]/40 p-1 big:p-4 hover:text-[#ffb782] hover:scale-110 transition-transform active:brightness-125">
+          <span class="material-symbols-outlined text-base big:text-2xl big:mb-1">arrow_forward_ios</span>
+          <span class="font-['Work_Sans'] text-[8px] big:text-[10px] uppercase tracking-widest">Next</span>
         </button>
       </div>
 
       <!-- Voice slider + speed dropdown -->
-      <div class="flex items-center gap-4 md:gap-6 md:border-l md:border-white/10 md:pl-12">
-        <div class="flex flex-col gap-2 w-40 md:w-48">
-          <div class="flex justify-between items-center mb-1">
+      <div class="flex items-center gap-2 big:gap-6 big:border-l big:border-white/10 big:pl-12">
+        <div class="flex flex-col gap-0.5 big:gap-2 w-24 big:w-48">
+          <div class="hidden big:flex justify-between items-center mb-1">
             <label for="volume" class="font-label text-[10px] uppercase tracking-widest text-[#b5c8e4]/60">Voice Resonance</label>
             <span id="volume-label" class="text-primary text-[10px] font-bold">100%</span>
           </div>
           <input id="volume" type="range" min="0" max="100" value="100"/>
         </div>
         <div class="relative">
-          <select id="speed" class="bg-surface-container-high hover:bg-surface-bright px-3 md:px-4 py-2 rounded-xl border border-white/5 font-label text-xs uppercase tracking-widest text-on-surface appearance-none cursor-pointer">
+          <select id="speed" class="bg-surface-container-high hover:bg-surface-bright px-2 big:px-4 py-1 big:py-2 rounded-lg big:rounded-xl border border-white/5 font-label text-[9px] big:text-xs uppercase tracking-widest text-on-surface appearance-none cursor-pointer">
             <option value="0.8">Slow</option>
             <option value="1" selected>Normal</option>
             <option value="1.2">Swift</option>

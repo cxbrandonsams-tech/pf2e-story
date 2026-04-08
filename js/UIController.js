@@ -72,8 +72,9 @@ export class UIController {
 
   _sync() {
     if (this.btnPlayIcon) {
-      // New Stitch shell: swap the Material icon name.
-      this.btnPlayIcon.textContent = this.book.isPlaying ? 'pause' : 'menu_book';
+      // Swap the Material icon between the universal play arrow (paused) and
+      // pause bars (playing). The button label always reads "Play".
+      this.btnPlayIcon.textContent = this.book.isPlaying ? 'pause' : 'play_arrow';
     } else if (this.btnPlay) {
       // Legacy shell fallback: the button itself has text content directly.
       this.btnPlay.textContent = this.book.isPlaying ? '\u23F8' : '\u25B6';

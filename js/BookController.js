@@ -77,18 +77,22 @@ export class BookController {
       resizeTimer = setTimeout(() => this._fitAllTextPages(), 150);
     });
 
-    // Orientation listener: when the user rotates a phone, rebuild the book
-    // with the appropriate layout. Uses matchMedia change events so it only
-    // fires on real orientation changes (not generic resize).
-    const orientationMQ = window.matchMedia('(orientation: portrait) and (max-width: 720px)');
-    const onOrientationChange = (e) => {
+    // Layout listener: rebuild the book when the viewport crosses the
+    // small/large boundary. The combined query matches if EITHER the width
+    // or the height of the viewport is ≤720px — that way a phone in
+    // landscape (e.g., 844×390) still counts as "small" and stays in the
+    // merged layout, instead of flipping to the desktop spread on rotation.
+    // Resizing a desktop browser across the 720px width threshold also
+    // triggers a rebuild.
+    const layoutMQ = window.matchMedia('(max-width: 720px), (max-height: 720px)');
+    const onLayoutChange = (e) => {
       this._rebuildBook(e.matches ? 'portrait' : 'spread');
     };
-    if (orientationMQ.addEventListener) {
-      orientationMQ.addEventListener('change', onOrientationChange);
-    } else if (orientationMQ.addListener) {
+    if (layoutMQ.addEventListener) {
+      layoutMQ.addEventListener('change', onLayoutChange);
+    } else if (layoutMQ.addListener) {
       // Safari < 14 fallback
-      orientationMQ.addListener(onOrientationChange);
+      layoutMQ.addListener(onLayoutChange);
     }
   }
 
@@ -182,7 +186,7 @@ export class BookController {
   }
 
   _isPortraitMobile() {
-    return window.matchMedia('(orientation: portrait) and (max-width: 720px)').matches;
+    return window.matchMedia('(max-width: 720px), (max-height: 720px)').matches;
   }
 
   currentPageData() {
