@@ -2,7 +2,7 @@
 // audio, Ken Burns, and text reveal.
 
 import { KenBurns } from './KenBurns.js';
-import { findIllustrationImg, findTextHost, fitTextToPage } from './buildBook.js';
+import { buildBook, findIllustrationImg, findTextHost, fitTextToPage } from './buildBook.js';
 
 const MOBILE_ILLUSTRATION_HOLD_MS = 1500;
 
@@ -63,6 +63,26 @@ export class BookController {
       }
       if (this.onChange) this.onChange();
     });
+  }
+
+  _rebuildBook(newLayout) {
+    if (newLayout === this._currentLayout) return;
+    const savedStoryIdx = this.currentStoryPageIndex();
+    const wasPlaying = this.isPlaying;
+    this.pause();
+    this.pageFlip.destroy();
+    this._currentLayout = newLayout;
+    this.pageFlip = buildBook(this.story, this.bookEl, { layout: newLayout });
+    this._wirePageFlipEvents();
+    const pagesPerStory = newLayout === 'portrait' ? 1 : 2;
+    const targetBookIdx = savedStoryIdx >= 0 ? 1 + savedStoryIdx * pagesPerStory : 0;
+    if (targetBookIdx > 0) {
+      this.pageFlip.flip(targetBookIdx);
+    }
+    this._loadCurrentPage();
+    this._applyKenBurnsForCurrent();
+    if (this.onChange) this.onChange();
+    if (wasPlaying) this.play();
   }
 
   currentStoryPageIndex() {
