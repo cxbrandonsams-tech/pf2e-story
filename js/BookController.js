@@ -94,6 +94,24 @@ export class BookController {
       // Safari < 14 fallback
       layoutMQ.addListener(onLayoutChange);
     }
+
+    // Orientation listener: catches phone rotations within the mobile
+    // bracket (which don't cross the size threshold above, so layoutMQ
+    // doesn't fire). We need to rebuild on rotation because the portrait
+    // StPageFlip config is computed dynamically from the actual book
+    // container dimensions in buildBook — those flip when the phone
+    // rotates and the wrapper would otherwise be stuck on the old aspect.
+    const orientationMQ = window.matchMedia('(orientation: portrait)');
+    const onOrientationFlip = () => {
+      if (this._isPortraitMobile()) {
+        this._rebuildBook('portrait', { force: true });
+      }
+    };
+    if (orientationMQ.addEventListener) {
+      orientationMQ.addEventListener('change', onOrientationFlip);
+    } else if (orientationMQ.addListener) {
+      orientationMQ.addListener(onOrientationFlip);
+    }
   }
 
   _wirePageFlipEvents() {
@@ -114,8 +132,8 @@ export class BookController {
     });
   }
 
-  _rebuildBook(newLayout) {
-    if (newLayout === this._currentLayout) return;
+  _rebuildBook(newLayout, { force = false } = {}) {
+    if (!force && newLayout === this._currentLayout) return;
     const bookIdxBefore = this.pageFlip.getCurrentPageIndex();
     const savedStoryIdx = this.currentStoryPageIndex();
     const oldContentPages = this.story.pages.length * (this._currentLayout === 'portrait' ? 1 : 2);

@@ -50,26 +50,40 @@ export function buildBook(story, containerEl, options = {}) {
     title: 'The End',
   }));
 
-  // StPageFlip's orientation auto-detection (in `size: 'stretch'` mode) is
-  // gated by `containerWidth < 2 * minWidth`. The minWidth therefore plays
-  // double duty:
-  //   - Spread layout (desktop): minWidth must be SMALLER than half the
-  //     container width so the auto-detect picks landscape. 280 keeps the
-  //     threshold (560) below typical desktop widths (≥800).
-  //   - Portrait layout (small viewports): minWidth must be LARGER than half
-  //     the container width so the auto-detect picks portrait. The largest
-  //     small-viewport book container we care about is ~366 (mobile portrait
-  //     phone in this app), so minWidth: 190 makes the threshold 380 — above
-  //     366 and well above the ~195 we get on a phone in landscape. 190 also
-  //     stays under 195 so the wrapper's CSS min-width (which equals
-  //     config.minWidth in portrait mode) doesn't overflow the landscape
-  //     phone's narrow book frame.
+  // StPageFlip notes:
+  //
+  // 1. Orientation auto-detect (in `size: 'stretch'` mode) uses the rule
+  //    `containerWidth < 2 * minWidth` to decide portrait vs landscape.
+  //    For the spread/desktop layout we want landscape, so minWidth must
+  //    be smaller than half the desktop container width — 280 keeps the
+  //    threshold (560) safely below typical desktop widths (≥800).
+  //
+  // 2. For the portrait layout we use a DYNAMIC config built from the
+  //    actual book container dimensions:
+  //
+  //      - `width`/`height` are set to the container's clientWidth /
+  //        clientHeight so the StPageFlip wrapper aspect matches the brown
+  //        book frame exactly. With the static 500/640 default, the
+  //        wrapper aspect (~0.78) didn't match the much taller mobile book
+  //        frame (~0.51), and the wrapper got clamped to ~half the frame
+  //        height — leaving big empty top/bottom gaps inside the frame.
+  //      - `minWidth` is set to floor(containerWidth/2)+1 so the
+  //        auto-detect's `containerWidth < 2*minWidth` always evaluates
+  //        true for THIS container, regardless of phone width (Pixel-class
+  //        phones have wider book frames than the 380-threshold static
+  //        floor handled). The wrapper's CSS min-width (which equals
+  //        config.minWidth in portrait mode) tracks the same value, so it
+  //        never overflows the visible frame.
+  //
+  //    The dynamic config is recomputed on every `_rebuildBook` (which now
+  //    fires on phone rotation too — see BookController's orientation
+  //    listener), so rotating doesn't strand StPageFlip in a stale config.
   const isPortraitLayout = layout === 'portrait';
   const pageFlipOpts = {
     width: 500,
     height: 640,
     size: 'stretch',
-    minWidth: isPortraitLayout ? 190 : 280,
+    minWidth: 280,
     maxWidth: 900,
     minHeight: 220,
     maxHeight: 1152,
@@ -80,6 +94,16 @@ export function buildBook(story, containerEl, options = {}) {
     showCover: true,
     mobileScrollSupport: false,
   };
+  if (isPortraitLayout) {
+    const cw = containerEl.clientWidth;
+    const ch = containerEl.clientHeight;
+    if (cw > 0 && ch > 0) {
+      pageFlipOpts.width = cw;
+      pageFlipOpts.height = ch;
+      pageFlipOpts.minWidth = Math.max(60, Math.floor(cw / 2) + 1);
+      pageFlipOpts.minHeight = Math.max(80, Math.floor(ch / 2) + 1);
+    }
+  }
   const pageFlip = new window.St.PageFlip(containerEl, pageFlipOpts);
 
   pageFlip.loadFromHTML(containerEl.querySelectorAll('.page'));
