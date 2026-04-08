@@ -2,7 +2,7 @@
 // audio, Ken Burns, and text reveal.
 
 import { KenBurns } from './KenBurns.js';
-import { findIllustrationImg, findTextPage, fitTextToPage } from './buildBook.js';
+import { findIllustrationImg, findTextHost, fitTextToPage } from './buildBook.js';
 
 const MOBILE_ILLUSTRATION_HOLD_MS = 1500;
 
@@ -52,7 +52,7 @@ export class BookController {
     // Fit text on all pages once fonts are ready, and re-fit on resize/orientation.
     this._fitAllTextPages = () => {
       this.story.pages.forEach((_, i) => {
-        const el = findTextPage(this.bookEl, i);
+        const el = findTextHost(this.bookEl, i);
         if (el) fitTextToPage(el);
       });
     };
@@ -166,7 +166,7 @@ export class BookController {
 
   _revealTextForCurrent() {
     const idx = this.currentStoryPageIndex();
-    const el = findTextPage(this.bookEl, idx);
+    const el = findTextHost(this.bookEl, idx);
     if (el) el.classList.add('reveal');
   }
 
@@ -178,13 +178,13 @@ export class BookController {
 
   _fitCurrentTextPage() {
     const idx = this.currentStoryPageIndex();
-    const el = findTextPage(this.bookEl, idx);
+    const el = findTextHost(this.bookEl, idx);
     if (el) fitTextToPage(el);
   }
 
   _resetWordsForCurrent() {
     const idx = this.currentStoryPageIndex();
-    const el = findTextPage(this.bookEl, idx);
+    const el = findTextHost(this.bookEl, idx);
     if (!el) return;
     el.querySelectorAll('.word.spoken').forEach(w => w.classList.remove('spoken'));
     const quill = el.querySelector('.quill');
@@ -196,7 +196,7 @@ export class BookController {
   _onAudioTime(currentTime, duration) {
     if (!duration || duration <= 0) return;
     const idx = this.currentStoryPageIndex();
-    const el = findTextPage(this.bookEl, idx);
+    const el = findTextHost(this.bookEl, idx);
     if (!el) return;
     const words = el.querySelectorAll('.word');
     if (words.length === 0) return;

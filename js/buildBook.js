@@ -72,17 +72,24 @@ export function buildBook(story, containerEl, options = {}) {
   return pageFlip;
 }
 
-// Helper: find the <img> inside the illustration page for a given story index.
+// Helper: find the <img> for a given story index. Works in both spread (where
+// the image lives on .page-illustration) and portrait merged (where the image
+// lives on .page-merged) layouts via a union selector.
 export function findIllustrationImg(containerEl, storyIndex) {
   return containerEl.querySelector(
-    `.page-illustration[data-story-index="${storyIndex}"] img.page-image`
+    `.page-illustration[data-story-index="${storyIndex}"] img.page-image, ` +
+    `.page-merged[data-story-index="${storyIndex}"] img.page-image`
   );
 }
 
-// Helper: find the text page element for a given story index.
-export function findTextPage(containerEl, storyIndex) {
+// Helper: find the element that hosts the page body + word spans for a given
+// story index. In spread layout this is .page-text-page; in portrait merged
+// layout it's .page-merged. The element exposes a .page-body child and .word
+// spans in both cases, so word-sync logic doesn't need to branch.
+export function findTextHost(containerEl, storyIndex) {
   return containerEl.querySelector(
-    `.page-text-page[data-story-index="${storyIndex}"]`
+    `.page-text-page[data-story-index="${storyIndex}"], ` +
+    `.page-merged[data-story-index="${storyIndex}"]`
   );
 }
 
