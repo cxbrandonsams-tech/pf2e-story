@@ -4,8 +4,6 @@
 import { KenBurns } from './KenBurns.js';
 import { buildBook, findIllustrationImg, findTextHost, fitTextToPage } from './buildBook.js';
 
-const MOBILE_ILLUSTRATION_HOLD_MS = 1500;
-
 export class BookController {
   constructor({ story, pageFlip, audio, bookEl }) {
     this.story = story;
@@ -148,19 +146,8 @@ export class BookController {
       : ((bookIdx - 1) >> 1);
   }
 
-  _isPortraitMode() {
-    return window.matchMedia('(max-width: 720px)').matches;
-  }
-
   _isPortraitMobile() {
     return window.matchMedia('(orientation: portrait) and (max-width: 720px)').matches;
-  }
-
-  // A book page is an "illustration page" if its book index is odd AND in content range.
-  _isOnIllustrationPage() {
-    const bookIdx = this.pageFlip.getCurrentPageIndex();
-    const contentPages = this.story.pages.length * 2;
-    return bookIdx >= 1 && bookIdx <= contentPages && (bookIdx % 2 === 1);
   }
 
   currentPageData() {
@@ -210,7 +197,9 @@ export class BookController {
       return;
     }
     this.pageFlip.flipNext();
-    if (!this._isPortraitMode()) {
+    if (this._currentLayout === 'spread') {
+      // Desktop spread advances both pages at once — fire a second flip after
+      // the first lands so a full spread turns as one unit.
       const targetBookIdx = this.pageFlip.getCurrentPageIndex() + 1;
       setTimeout(() => this.pageFlip.flip(targetBookIdx), 50);
     }
