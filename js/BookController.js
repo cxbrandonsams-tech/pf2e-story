@@ -67,7 +67,10 @@ export class BookController {
 
   _rebuildBook(newLayout) {
     if (newLayout === this._currentLayout) return;
+    const bookIdxBefore = this.pageFlip.getCurrentPageIndex();
     const savedStoryIdx = this.currentStoryPageIndex();
+    const oldContentPages = this.story.pages.length * (this._currentLayout === 'portrait' ? 1 : 2);
+    const wasOnBackCover = bookIdxBefore > oldContentPages;
     const wasPlaying = this.isPlaying;
     this.pause();
     this.pageFlip.destroy();
@@ -75,13 +78,25 @@ export class BookController {
     this.pageFlip = buildBook(this.story, this.bookEl, { layout: newLayout });
     this._wirePageFlipEvents();
     const pagesPerStory = newLayout === 'portrait' ? 1 : 2;
-    const targetBookIdx = savedStoryIdx >= 0 ? 1 + savedStoryIdx * pagesPerStory : 0;
+    const newContentPages = this.story.pages.length * pagesPerStory;
+    let targetBookIdx;
+    if (savedStoryIdx >= 0) {
+      targetBookIdx = 1 + savedStoryIdx * pagesPerStory;
+    } else if (wasOnBackCover) {
+      targetBookIdx = newContentPages + 1;
+    } else {
+      targetBookIdx = 0;
+    }
     if (targetBookIdx > 0) {
       this.pageFlip.flip(targetBookIdx);
+      // Flip handler (wired via _wirePageFlipEvents) will load audio,
+      // restart Ken Burns, and notify onChange when the flip lands.
+    } else {
+      // No flip — wire up the cover state manually since no flip event fires.
+      this._loadCurrentPage();
+      this._applyKenBurnsForCurrent();
+      if (this.onChange) this.onChange();
     }
-    this._loadCurrentPage();
-    this._applyKenBurnsForCurrent();
-    if (this.onChange) this.onChange();
     if (wasPlaying) this.play();
   }
 
