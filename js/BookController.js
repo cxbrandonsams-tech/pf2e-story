@@ -2,9 +2,7 @@
 // audio, Ken Burns, and text reveal.
 
 import { KenBurns } from './KenBurns.js';
-import { findIllustrationImg, findTextPage, fitTextToPage } from './buildBook.js';
-
-const MOBILE_ILLUSTRATION_HOLD_MS = 1500;
+import { buildBook, findIllustrationImg, findTextHost, fitTextToPage } from './buildBook.js';
 
 export class BookController {
   constructor({ story, pageFlip, audio, bookEl }) {
@@ -12,6 +10,20 @@ export class BookController {
     this.pageFlip = pageFlip;
     this.audio = audio;
     this.bookEl = bookEl;
+    // StPageFlip's destroy() detaches the mount element from the DOM, so to
+    // rebuild we re-attach a fresh mount under the same parent. Capture both
+    // the parent and the original mount attributes (id, className) once.
+    this._bookParent = bookEl.parentElement;
+    this._bookId = bookEl.id;
+    // Scrub StPageFlip's runtime classes (e.g., stf__parent) from the captured
+    // original — buildBook has already mounted on bookEl by the time this
+    // constructor runs, so bookEl.className includes them. Storing the cleaned
+    // string keeps _rebuildBook's fresh mount in a "before StPageFlip" state.
+    this._bookOriginalClass = bookEl.className
+      .replace(/\bstf__\S+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    this._currentLayout = this._isPortraitMobile() ? 'portrait' : 'spread';
     this.isPlaying = false;
     this.onChange = null;
     this._timerId = null;
@@ -23,36 +35,14 @@ export class BookController {
 
     this.audio.onTimeUpdate = (t, d) => this._onAudioTime(t, d);
 
-    this.pageFlip.on('flip', () => {
-      this._clearTimer();
-      this._stopKenBurnsAll();
-      this._clearRevealAll();
-      this._resetWordsForCurrent();
-      this.audio.reset();
-      this._loadCurrentPage();
-      this._fitCurrentTextPage();
-      this._applyKenBurnsForCurrent();
-      if (this.isPlaying) {
-        // Mobile portrait: pause briefly on the illustration page, then auto-flip to the text page.
-        if (this._isPortraitMode() && this._isOnIllustrationPage()) {
-          this._timerId = setTimeout(() => {
-            this._timerId = null;
-            if (this.isPlaying) this.pageFlip.flipNext();
-          }, MOBILE_ILLUSTRATION_HOLD_MS);
-        } else {
-          this._revealTextForCurrent();
-          this._playCurrentPage();
-        }
-      }
-      if (this.onChange) this.onChange();
-    });
+    this._wirePageFlipEvents();
 
     this._loadCurrentPage();
     this._applyKenBurnsForCurrent();
     // Fit text on all pages once fonts are ready, and re-fit on resize/orientation.
     this._fitAllTextPages = () => {
       this.story.pages.forEach((_, i) => {
-        const el = findTextPage(this.bookEl, i);
+        const el = findTextHost(this.bookEl, i);
         if (el) fitTextToPage(el);
       });
     };
@@ -66,25 +56,113 @@ export class BookController {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => this._fitAllTextPages(), 150);
     });
+
+    // Orientation listener: when the user rotates a phone, rebuild the book
+    // with the appropriate layout. Uses matchMedia change events so it only
+    // fires on real orientation changes (not generic resize).
+    const orientationMQ = window.matchMedia('(orientation: portrait) and (max-width: 720px)');
+    const onOrientationChange = (e) => {
+      this._rebuildBook(e.matches ? 'portrait' : 'spread');
+    };
+    if (orientationMQ.addEventListener) {
+      orientationMQ.addEventListener('change', onOrientationChange);
+    } else if (orientationMQ.addListener) {
+      // Safari < 14 fallback
+      orientationMQ.addListener(onOrientationChange);
+    }
+  }
+
+  _wirePageFlipEvents() {
+    this.pageFlip.on('flip', () => {
+      this._clearTimer();
+      this._stopKenBurnsAll();
+      this._clearRevealAll();
+      this._resetWordsForCurrent();
+      this.audio.reset();
+      this._loadCurrentPage();
+      this._fitCurrentTextPage();
+      this._applyKenBurnsForCurrent();
+      if (this.isPlaying) {
+        this._revealTextForCurrent();
+        this._playCurrentPage();
+      }
+      if (this.onChange) this.onChange();
+    });
+  }
+
+  _rebuildBook(newLayout) {
+    if (newLayout === this._currentLayout) return;
+    const bookIdxBefore = this.pageFlip.getCurrentPageIndex();
+    const savedStoryIdx = this.currentStoryPageIndex();
+    const oldContentPages = this.story.pages.length * (this._currentLayout === 'portrait' ? 1 : 2);
+    const wasOnBackCover = bookIdxBefore > oldContentPages;
+    const wasPlaying = this.isPlaying;
+    this.pause();
+    // Wrap destroy() defensively: if a flip animation was in flight at the
+    // moment the user rotated, StPageFlip's internal animator can throw after
+    // its canvas is detached. We still want to proceed with rebuild so the
+    // controller reaches a consistent state.
+    try {
+      this.pageFlip.destroy();
+    } catch (err) {
+      console.warn('StPageFlip.destroy() threw during rebuild:', err);
+    }
+    // StPageFlip.destroy() removes the mount element from the DOM. Create a
+    // fresh mount with the same id/class under the saved parent so subsequent
+    // rebuilds keep working.
+    const fresh = document.createElement('div');
+    fresh.id = this._bookId;
+    fresh.className = this._bookOriginalClass;
+    this._bookParent.appendChild(fresh);
+    this.bookEl = fresh;
+    // Update _currentLayout BEFORE buildBook runs. The synchronous resize that
+    // StPageFlip fires during construction can re-trigger our matchMedia listener
+    // mid-rebuild on some engines; the early-return guard at the top of this
+    // method relies on _currentLayout already matching newLayout to suppress
+    // that reentrant call.
+    this._currentLayout = newLayout;
+    this.pageFlip = buildBook(this.story, this.bookEl, { layout: newLayout });
+    this._wirePageFlipEvents();
+    const pagesPerStory = newLayout === 'portrait' ? 1 : 2;
+    const newContentPages = this.story.pages.length * pagesPerStory;
+    let targetBookIdx;
+    if (savedStoryIdx >= 0) {
+      targetBookIdx = 1 + savedStoryIdx * pagesPerStory;
+    } else if (wasOnBackCover) {
+      targetBookIdx = newContentPages + 1;
+    } else {
+      targetBookIdx = 0;
+    }
+    // Restore isPlaying BEFORE flipping so the flip handler (which checks
+    // this.isPlaying when the flip lands) re-starts narration on the target
+    // page. Calling play() here would race with the in-flight flip and could
+    // emit an extra flipNext() (the new pageFlip starts at idx 0).
+    this.isPlaying = wasPlaying;
+    if (targetBookIdx > 0) {
+      this.pageFlip.flip(targetBookIdx);
+      // Flip handler (wired via _wirePageFlipEvents) will load audio,
+      // restart Ken Burns, and notify onChange when the flip lands.
+    } else {
+      // No flip — wire up the cover state manually since no flip event fires.
+      this._loadCurrentPage();
+      this._applyKenBurnsForCurrent();
+      if (this.onChange) this.onChange();
+    }
   }
 
   currentStoryPageIndex() {
     const bookIdx = this.pageFlip.getCurrentPageIndex();
     if (bookIdx < 1) return -1;
-    const contentPages = this.story.pages.length * 2;
+    const pagesPerStory = this._currentLayout === 'portrait' ? 1 : 2;
+    const contentPages = this.story.pages.length * pagesPerStory;
     if (bookIdx > contentPages) return -1;
-    return (bookIdx - 1) >> 1;
+    return this._currentLayout === 'portrait'
+      ? (bookIdx - 1)
+      : ((bookIdx - 1) >> 1);
   }
 
-  _isPortraitMode() {
-    return window.matchMedia('(max-width: 720px)').matches;
-  }
-
-  // A book page is an "illustration page" if its book index is odd AND in content range.
-  _isOnIllustrationPage() {
-    const bookIdx = this.pageFlip.getCurrentPageIndex();
-    const contentPages = this.story.pages.length * 2;
-    return bookIdx >= 1 && bookIdx <= contentPages && (bookIdx % 2 === 1);
+  _isPortraitMobile() {
+    return window.matchMedia('(orientation: portrait) and (max-width: 720px)').matches;
   }
 
   currentPageData() {
@@ -134,7 +212,9 @@ export class BookController {
       return;
     }
     this.pageFlip.flipNext();
-    if (!this._isPortraitMode()) {
+    if (this._currentLayout === 'spread') {
+      // Desktop spread advances both pages at once — fire a second flip after
+      // the first lands so a full spread turns as one unit.
       const targetBookIdx = this.pageFlip.getCurrentPageIndex() + 1;
       setTimeout(() => this.pageFlip.flip(targetBookIdx), 50);
     }
@@ -166,7 +246,7 @@ export class BookController {
 
   _revealTextForCurrent() {
     const idx = this.currentStoryPageIndex();
-    const el = findTextPage(this.bookEl, idx);
+    const el = findTextHost(this.bookEl, idx);
     if (el) el.classList.add('reveal');
   }
 
@@ -178,13 +258,13 @@ export class BookController {
 
   _fitCurrentTextPage() {
     const idx = this.currentStoryPageIndex();
-    const el = findTextPage(this.bookEl, idx);
+    const el = findTextHost(this.bookEl, idx);
     if (el) fitTextToPage(el);
   }
 
   _resetWordsForCurrent() {
     const idx = this.currentStoryPageIndex();
-    const el = findTextPage(this.bookEl, idx);
+    const el = findTextHost(this.bookEl, idx);
     if (!el) return;
     el.querySelectorAll('.word.spoken').forEach(w => w.classList.remove('spoken'));
     const quill = el.querySelector('.quill');
@@ -196,7 +276,7 @@ export class BookController {
   _onAudioTime(currentTime, duration) {
     if (!duration || duration <= 0) return;
     const idx = this.currentStoryPageIndex();
-    const el = findTextPage(this.bookEl, idx);
+    const el = findTextHost(this.bookEl, idx);
     if (!el) return;
     const words = el.querySelectorAll('.word');
     if (words.length === 0) return;
