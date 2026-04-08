@@ -257,9 +257,54 @@
       .page-text-page .page-body::-webkit-scrollbar,
       .page-merged .page-body::-webkit-scrollbar { display: none; }
     }
+
+    /* Rotate hint toast — shown only on first portrait-mobile load by RotateHint.js. */
+    #rotate-hint {
+      position: fixed;
+      top: 64px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px 8px 12px;
+      background: rgba(26, 14, 7, 0.92);
+      color: #ffb782;
+      border: 1px solid rgba(255, 183, 130, 0.3);
+      border-radius: 999px;
+      font-family: 'Work Sans', sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transition: opacity 280ms ease-out;
+      z-index: 1100;
+      pointer-events: auto;
+    }
+    #rotate-hint[hidden] { display: none; }
+    #rotate-hint .material-symbols-outlined { font-size: 18px; }
+    #rotate-hint .rotate-hint-label { line-height: 1; }
+    #rotate-hint #rotate-hint-close {
+      background: transparent;
+      border: 0;
+      color: rgba(255, 183, 130, 0.7);
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 4px;
+      cursor: pointer;
+    }
+    #rotate-hint #rotate-hint-close:hover { color: #ffb782; }
   </style>
 </head>
 <body class="bg-background text-on-surface font-body selection:bg-primary/30 min-h-screen flex flex-col overflow-hidden desk-bg">
+
+  <!-- Rotate hint toast — shown only on first portrait-mobile load by js/RotateHint.js -->
+  <div id="rotate-hint" hidden role="status" aria-live="polite">
+    <span class="material-symbols-outlined" aria-hidden="true">screen_rotation</span>
+    <span class="rotate-hint-label">Rotate for the full spread</span>
+    <button id="rotate-hint-close" type="button" aria-label="Dismiss">×</button>
+  </div>
 
   <!-- Tailwind Play CDN safelist: classes added dynamically via innerHTML in js/buildBook.js
        aren't always caught by the CDN's MutationObserver. Referencing them in a hidden node
