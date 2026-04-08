@@ -85,7 +85,18 @@
     .material-symbols-outlined { font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24; }
     .glow-sm { filter: drop-shadow(0 0 5px rgba(255, 183, 130, 0.5)); }
 
-    .parchment-texture { background-color: #f4e4bc; position: relative; }
+    .parchment-texture { background-color: #ecd9a8; position: relative; }
+
+    /* StPageFlip writes `display: block` as an inline style on each .page when
+       it positions them absolutely. That clobbers our `flex flex-col` Tailwind
+       class on the text page, which in turn breaks the body's flex-1 sizing
+       and lets it grow to content height (overflowing the page). Forcing flex
+       layout back on with !important restores proper height constraint so the
+       body can scroll inside its slot. */
+    .page-text-page {
+      display: flex !important;
+      flex-direction: column !important;
+    }
     .parchment-texture::before {
       content: ""; position: absolute; inset: 0;
       background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDnrW5Rf3TCvMBbyA7wjhMuUFa3pdUXs1Mbtuih842cukGdCY_ikBKDjiLeoPj9gS9Jhhzu54T9CAd4XyJ_S6LlnZJuWWEmqQPoTRHrgC2afEIOo5aCm_SGLSYLApYXiWTKojR92d0Og2wnzylcdfJDSB3c_YxiDrbsxG0qoCiCgwZ4jo2QPCttwSGOc-893SSnnqd57mDVIxMLwY7K2i11q68Qqks7KjaOJwbILZqqesrHYJ5Sx7buronkfteEhrnhu4X3xbfs230);
@@ -246,30 +257,31 @@
   <!-- Tailwind Play CDN safelist: classes added dynamically via innerHTML in js/buildBook.js
        aren't always caught by the CDN's MutationObserver. Referencing them in a hidden node
        forces the CDN to generate the corresponding rules during its initial scan. -->
-  <div class="hidden md:p-16 md:text-4xl text-3xl"></div>
+  <div class="hidden md:p-16 md:text-4xl text-3xl aspect-[5/7] md:aspect-[7/5]"></div>
 
   <!-- Top app bar -->
-  <header class="bg-[#101418] flex justify-between items-center w-full px-8 py-4 z-50 shadow-2xl shadow-black/60 sticky top-0">
+  <header class="bg-[#101418] flex justify-between items-center w-full px-8 py-3 z-50 shadow-2xl shadow-black/60 sticky top-0 shrink-0">
     <h1 id="story-title" class="font-['Noto_Serif'] font-bold tracking-tight text-2xl md:text-3xl text-[#ffb782] drop-shadow-sm"></h1>
   </header>
 
-  <!-- Main book area -->
-  <main class="flex-grow flex items-center justify-center p-4 md:p-8 lg:p-12 relative">
+  <!-- Main book area — minimal padding so the book frame can fill the gap between header and footer -->
+  <main class="flex-grow flex items-center justify-center p-3 md:p-4 lg:p-6 relative min-h-0">
     <!-- Floating dust/motes decoration -->
     <div class="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
       <div class="absolute top-1/4 left-1/4 w-1 h-1 bg-primary rounded-full blur-[1px]"></div>
       <div class="absolute top-3/4 left-1/3 w-1.5 h-1.5 bg-secondary rounded-full blur-[2px]"></div>
       <div class="absolute top-1/2 right-1/4 w-1 h-1 bg-primary rounded-full blur-[1px]"></div>
     </div>
-    <!-- Dark wood book frame (decorative; StPageFlip mounts inside) -->
-    <div class="book-outer-frame relative w-full max-w-6xl aspect-[16/10] bg-[#2d1b0e] rounded-xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] p-2 md:p-4 ring-2 md:ring-8 ring-[#1a0f08] overflow-hidden">
+    <!-- Dark wood book frame (decorative; StPageFlip mounts inside).
+         Mobile is portrait (taller than wide); desktop is landscape spread. -->
+    <div class="book-outer-frame relative w-full max-w-6xl aspect-[5/7] md:aspect-[7/5] max-h-full bg-[#2d1b0e] rounded-xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] p-2 md:p-4 ring-2 md:ring-8 ring-[#1a0f08] overflow-hidden">
       <div id="book" class="w-full h-full"></div>
     </div>
   </main>
 
-  <!-- Footer control bar -->
-  <footer class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 md:px-12 pb-6 md:pb-8 pt-4 bg-gradient-to-t from-black/80 to-transparent">
-    <div class="flex flex-wrap justify-center items-center gap-6 md:gap-12 bg-[#1b1f23]/90 backdrop-blur-xl px-6 md:px-12 py-3 md:py-4 rounded-3xl md:rounded-full shadow-2xl border border-white/5">
+  <!-- Footer control bar — in normal flow (not fixed) so main can size around it -->
+  <footer class="w-full z-50 flex justify-around items-center px-6 md:px-12 pb-4 md:pb-6 pt-3 bg-gradient-to-t from-black/80 to-transparent shrink-0">
+    <div class="flex flex-wrap justify-center items-center gap-6 md:gap-12 bg-[#1b1f23]/90 backdrop-blur-xl px-6 md:px-12 py-2 md:py-3 rounded-3xl md:rounded-full shadow-2xl border border-white/5">
       <!-- Navigation -->
       <div class="flex gap-4 items-center">
         <button id="btn-prev" class="flex flex-col items-center justify-center text-[#b5c8e4]/40 p-3 md:p-4 hover:text-[#ffb782] hover:scale-110 transition-transform active:brightness-125">

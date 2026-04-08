@@ -70,24 +70,12 @@ export function findTextPage(containerEl, storyIndex) {
   );
 }
 
-// Fits body text to the available page height by binary-searching font size.
-// Call after the page is in the DOM and fonts are loaded.
-export function fitTextToPage(textPageEl, maxPx = 22, minPx = 10) {
-  if (!textPageEl) return;
-  const body = textPageEl.querySelector('.page-body');
-  if (!body) return;
-  let lo = minPx, hi = maxPx, best = minPx;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    body.style.fontSize = mid + 'px';
-    if (body.scrollHeight <= body.clientHeight + 1) {
-      best = mid;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  body.style.fontSize = best + 'px';
+// No-op kept for API compatibility with BookController call sites.
+// Earlier versions binary-searched font size to fit content into a fixed page
+// height. The new design uses a fixed 18px desktop / 16px mobile font and lets
+// the body scroll inside its flex slot when the text is longer than the page.
+export function fitTextToPage(_textPageEl) {
+  /* intentionally empty */
 }
 
 // ---------- internal helpers ----------
@@ -165,9 +153,11 @@ function renderTextPage({ text, chapter, storyTitle, pageNumber, storyIndex }) {
     el.appendChild(header);
   }
 
-  // Body
+  // Body — flex-1 with min-h-0 so it actually shrinks to fit the available
+  // page height, then scrolls if the text is longer than the page can hold.
+  // Without min-h-0 the flex item grows to its content size and overflows.
   const body = document.createElement('div');
-  body.className = 'page-body flex-1 max-w-none text-[#3d2313] font-body leading-relaxed text-justify overflow-hidden relative z-10';
+  body.className = 'page-body flex-1 min-h-0 max-w-none text-[#3d2313] text-[18px] font-body leading-relaxed text-justify overflow-y-auto custom-scrollbar pr-3 relative z-10';
 
   const paragraphs = (text || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
   if (paragraphs.length === 0) paragraphs.push('');
