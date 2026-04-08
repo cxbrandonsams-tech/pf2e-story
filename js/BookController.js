@@ -12,6 +12,7 @@ export class BookController {
     this.pageFlip = pageFlip;
     this.audio = audio;
     this.bookEl = bookEl;
+    this._currentLayout = this._isPortraitMobile() ? 'portrait' : 'spread';
     this.isPlaying = false;
     this.onChange = null;
     this._timerId = null;
@@ -71,13 +72,20 @@ export class BookController {
   currentStoryPageIndex() {
     const bookIdx = this.pageFlip.getCurrentPageIndex();
     if (bookIdx < 1) return -1;
-    const contentPages = this.story.pages.length * 2;
+    const pagesPerStory = this._currentLayout === 'portrait' ? 1 : 2;
+    const contentPages = this.story.pages.length * pagesPerStory;
     if (bookIdx > contentPages) return -1;
-    return (bookIdx - 1) >> 1;
+    return this._currentLayout === 'portrait'
+      ? (bookIdx - 1)
+      : ((bookIdx - 1) >> 1);
   }
 
   _isPortraitMode() {
     return window.matchMedia('(max-width: 720px)').matches;
+  }
+
+  _isPortraitMobile() {
+    return window.matchMedia('(orientation: portrait) and (max-width: 720px)').matches;
   }
 
   // A book page is an "illustration page" if its book index is odd AND in content range.
