@@ -36,13 +36,14 @@ function validate(story) {
   }
   story.pages.forEach((p, i) => {
     if (!p.image) throw new Error(`Page ${i + 1} missing "image"`);
+    if (p.chapter !== undefined && typeof p.chapter !== 'string') {
+      throw new Error(`Page ${i + 1} "chapter" must be a string if present`);
+    }
+    if (p.plateLabel !== undefined && typeof p.plateLabel !== 'string') {
+      throw new Error(`Page ${i + 1} "plateLabel" must be a string if present`);
+    }
+    if (p.illustrationTitle !== undefined && typeof p.illustrationTitle !== 'string') {
+      throw new Error(`Page ${i + 1} "illustrationTitle" must be a string if present`);
+    }
   });
-  if (story.ambient !== undefined && story.ambient !== null) {
-    if (typeof story.ambient !== 'object') {
-      throw new Error('story.ambient must be an object if present');
-    }
-    if (story.ambient.music !== undefined && typeof story.ambient.music !== 'string') {
-      throw new Error('story.ambient.music must be a string if present');
-    }
-  }
 }
