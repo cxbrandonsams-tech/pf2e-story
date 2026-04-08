@@ -92,7 +92,14 @@ export function buildBook(story, containerEl, options = {}) {
     maxShadowOpacity: 0,
     flippingTime: 1200,
     showCover: true,
-    mobileScrollSupport: false,
+    // Keep StPageFlip's default mobileScrollSupport (true). With this on:
+    //   - touchstart inside a page does NOT call preventDefault, so the
+    //     browser's native vertical scroll on .page-body works,
+    //   - touchmove only triggers a page-flip drag when horizontal movement
+    //     exceeds ~10px, so vertical swipes scroll the body without
+    //     accidentally flipping the page.
+    // Setting it to false (as the previous config did) blocked all touch
+    // scrolling on phones — the body silently refused to scroll.
   };
   if (isPortraitLayout) {
     const cw = containerEl.clientWidth;
