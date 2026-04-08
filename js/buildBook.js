@@ -141,6 +141,119 @@ function renderIllustrationPage({ image, storyIndex, plateLabel, illustrationTit
 const OPENING_QUOTE = /^[\u201C"']/;
 const CLOSING_QUOTE = /[\u201D"']$/;
 
+function renderMergedPage({
+  image,
+  text,
+  chapter,
+  storyTitle,
+  pageNumber,
+  storyIndex,
+  plateLabel,
+  illustrationTitle,
+}) {
+  // The .page element itself is owned by StPageFlip — its `display` is set
+  // dynamically (block when visible, none when hidden). We mustn't put a
+  // `display: flex` rule on it or override that with !important, or hidden
+  // pages stay visible and overlap the cover. The flex layout that constrains
+  // the body lives in an inner wrapper instead, positioned absolutely to fill
+  // the page. The page is purely the StPageFlip mount.
+  const el = document.createElement('div');
+  el.className = 'page page-merged parchment-texture relative overflow-hidden';
+  el.dataset.storyIndex = String(storyIndex);
+
+  // Inner wrapper: flex column, fills the page minus padding. Owns the
+  // image / chapter / body / footer flex layout. Independent of .page's display.
+  const inner = document.createElement('div');
+  inner.className = 'page-merged-inner absolute inset-0 flex flex-col p-6 md:p-10';
+  el.appendChild(inner);
+
+  // ---- Image area (~38% of inner height, fixed) ----
+  const imgWrap = document.createElement('div');
+  imgWrap.className = 'page-merged-image relative w-full rounded-sm overflow-hidden shadow-inner flex-shrink-0 mb-4';
+  imgWrap.style.height = '38%';
+  imgWrap.innerHTML = `
+    <img class="page-image w-full h-full object-cover grayscale-[0.2] sepia-[0.2]" src="${escapeAttr(image)}" alt=""/>
+    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
+    ${(plateLabel || illustrationTitle) ? `
+    <div class="absolute bottom-3 left-4 right-4 pointer-events-none">
+      ${plateLabel ? `<span class="font-label text-[9px] tracking-[0.3em] uppercase text-[#ffb782]/80 mb-0.5 block">Plate ${escapeText(plateLabel)}</span>` : ''}
+      ${illustrationTitle ? `<h3 class="font-headline text-base text-white italic drop-shadow-md">${escapeText(illustrationTitle)}</h3>` : ''}
+    </div>` : ''}
+  `;
+  const imgEl = imgWrap.querySelector('img.page-image');
+  if (imgEl) imgEl.onerror = () => { imgEl.style.display = 'none'; };
+  inner.appendChild(imgWrap);
+
+  // ---- Chapter heading (optional) ----
+  if (chapter) {
+    const header = document.createElement('div');
+    header.className = 'mb-3 relative z-10 flex-shrink-0';
+    header.innerHTML = `
+      <h2 class="font-headline text-2xl text-[#301400] leading-tight mb-1">${escapeText(chapter)}</h2>
+      <div class="h-px w-20 bg-[#d87821]/40"></div>
+    `;
+    inner.appendChild(header);
+  }
+
+  // ---- Body (scrollable) ----
+  // The class `page-body` is the same selector word-sync uses on the spread
+  // text page, so the existing BookController._onAudioTime auto-scroll works
+  // unmodified.
+  const body = document.createElement('div');
+  body.className = 'page-body flex-1 min-h-0 max-w-none text-[#3d2313] text-[16px] font-body leading-relaxed text-justify overflow-y-auto custom-scrollbar pr-2 relative z-10';
+
+  const paragraphs = (text || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (paragraphs.length === 0) paragraphs.push('');
+
+  let globalWordIndex = 0;
+  paragraphs.forEach((chunk, pi) => {
+    const trimmed = chunk.trim();
+    const isBlockquote = OPENING_QUOTE.test(trimmed) && CLOSING_QUOTE.test(trimmed);
+    const p = document.createElement('p');
+    p.className = isBlockquote
+      ? 'italic opacity-80 border-l-2 border-[#d87821]/30 pl-4 py-2 my-4'
+      : 'mb-3 relative';
+
+    let remaining = chunk;
+    if (pi === 0 && !isBlockquote && chunk.length > 0) {
+      const firstChar = chunk[0];
+      const dropCap = document.createElement('span');
+      dropCap.className = 'word drop-cap float-left text-5xl font-headline text-[#d87821] mr-2 mt-1 mb-[-0.4rem] leading-[1] drop-shadow-sm select-none';
+      dropCap.dataset.wordIndex = String(globalWordIndex++);
+      dropCap.textContent = firstChar;
+      p.appendChild(dropCap);
+      remaining = chunk.slice(1);
+    }
+
+    const words = remaining.split(/\s+/).filter(Boolean);
+    words.forEach((w, wi) => {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.wordIndex = String(globalWordIndex++);
+      span.textContent = w;
+      p.appendChild(span);
+      if (wi < words.length - 1) p.appendChild(document.createTextNode(' '));
+    });
+
+    body.appendChild(p);
+  });
+  inner.appendChild(body);
+
+  // ---- Footer ----
+  const footer = document.createElement('div');
+  footer.className = 'mt-auto pt-3 flex justify-center border-t border-black/5 relative z-10 flex-shrink-0';
+  footer.innerHTML = `<span class="font-label text-[9px] tracking-widest text-[#3d2313]/60 uppercase">Page ${pageNumber} — ${escapeText(storyTitle)}</span>`;
+  inner.appendChild(footer);
+
+  // ---- Rune corner decoration (matches text page) ----
+  const rune = document.createElement('div');
+  rune.className = 'absolute bottom-6 right-6 text-black/10 select-none pointer-events-none';
+  rune.innerHTML = `<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">storm</span>`;
+  el.appendChild(rune);
+
+  return el;
+}
+
 function renderTextPage({ text, chapter, storyTitle, pageNumber, storyIndex }) {
   // The .page element itself is owned by StPageFlip — its `display` is set
   // dynamically (block when visible, none when hidden). We mustn't put a
