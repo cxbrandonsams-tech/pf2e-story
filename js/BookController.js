@@ -305,24 +305,45 @@ export class BookController {
     // Applies on both desktop and mobile now that the desktop body is also a
     // scrollable flex slot. The 0.35 factor keeps the spoken word about a third
     // of the way down the visible area so the reader sees upcoming text below.
-    const wordTop = lastSpoken.offsetTop;
-    const targetScroll = Math.max(0, wordTop - bodyEl.clientHeight * 0.35);
+    //
+    // We can't use lastSpoken.offsetTop directly: each <p> has class
+    // 'relative' (so blockquote borders / drop-caps anchor correctly), which
+    // makes the paragraph the offsetParent of every word span. offsetTop is
+    // therefore the word's offset INSIDE its paragraph, not inside the body —
+    // a small number that pins targetScroll near 0 forever. Compute the
+    // word's body-relative top via getBoundingClientRect + scrollTop instead.
+    const wordRectForScroll = lastSpoken.getBoundingClientRect();
+    const bodyRectForScroll = bodyEl.getBoundingClientRect();
+    const wordTopInBody = (wordRectForScroll.top - bodyRectForScroll.top) + bodyEl.scrollTop;
+    const maxScroll = Math.max(0, bodyEl.scrollHeight - bodyEl.clientHeight);
+    const targetScroll = Math.max(0, Math.min(maxScroll, wordTopInBody - bodyEl.clientHeight * 0.35));
     if (Math.abs(bodyEl.scrollTop - targetScroll) > 4) {
       bodyEl.scrollTop = targetScroll;
     }
 
     // Quill cursor — desktop only. On mobile the auto-scroll is the visual
     // pointer; on desktop the quill floats next to the spoken word.
+    // Quill is parented to .page-text-page (which has `position: relative`),
+    // so its left/top must be expressed in that element's coordinate space.
+    // Re-read both rects AFTER the scroll above so we use the post-scroll
+    // visible position of the word.
     const isMobile = window.matchMedia('(max-width: 720px)').matches;
     if (!quill) return;
     if (isMobile) { quill.classList.remove('active'); return; }
-    quill.classList.add('active');
+    const pageEl = quill.offsetParent || el;
+    const pageRect = pageEl.getBoundingClientRect();
     const wordRect = lastSpoken.getBoundingClientRect();
     const bodyRect = bodyEl.getBoundingClientRect();
-    const x = (wordRect.right - bodyRect.left) + bodyEl.offsetLeft;
-    const y = (wordRect.top  - bodyRect.top)  + bodyEl.offsetTop;
-    quill.style.left = `${x}px`;
-    quill.style.top  = `${y}px`;
+    // Hide the quill when the word has scrolled outside the visible body
+    // (e.g., we're at the bottom of the body and the word fell off the
+    // top, or we just started and the word hasn't been reached yet).
+    const wordVisible =
+      wordRect.bottom > bodyRect.top &&
+      wordRect.top    < bodyRect.bottom;
+    if (!wordVisible) { quill.classList.remove('active'); return; }
+    quill.classList.add('active');
+    quill.style.left = `${wordRect.right - pageRect.left}px`;
+    quill.style.top  = `${wordRect.top   - pageRect.top}px`;
   }
 
   play() {
