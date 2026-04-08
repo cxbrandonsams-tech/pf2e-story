@@ -24,29 +24,7 @@ export class BookController {
 
     this.audio.onTimeUpdate = (t, d) => this._onAudioTime(t, d);
 
-    this.pageFlip.on('flip', () => {
-      this._clearTimer();
-      this._stopKenBurnsAll();
-      this._clearRevealAll();
-      this._resetWordsForCurrent();
-      this.audio.reset();
-      this._loadCurrentPage();
-      this._fitCurrentTextPage();
-      this._applyKenBurnsForCurrent();
-      if (this.isPlaying) {
-        // Mobile portrait: pause briefly on the illustration page, then auto-flip to the text page.
-        if (this._isPortraitMode() && this._isOnIllustrationPage()) {
-          this._timerId = setTimeout(() => {
-            this._timerId = null;
-            if (this.isPlaying) this.pageFlip.flipNext();
-          }, MOBILE_ILLUSTRATION_HOLD_MS);
-        } else {
-          this._revealTextForCurrent();
-          this._playCurrentPage();
-        }
-      }
-      if (this.onChange) this.onChange();
-    });
+    this._wirePageFlipEvents();
 
     this._loadCurrentPage();
     this._applyKenBurnsForCurrent();
@@ -66,6 +44,24 @@ export class BookController {
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => this._fitAllTextPages(), 150);
+    });
+  }
+
+  _wirePageFlipEvents() {
+    this.pageFlip.on('flip', () => {
+      this._clearTimer();
+      this._stopKenBurnsAll();
+      this._clearRevealAll();
+      this._resetWordsForCurrent();
+      this.audio.reset();
+      this._loadCurrentPage();
+      this._fitCurrentTextPage();
+      this._applyKenBurnsForCurrent();
+      if (this.isPlaying) {
+        this._revealTextForCurrent();
+        this._playCurrentPage();
+      }
+      if (this.onChange) this.onChange();
     });
   }
 
