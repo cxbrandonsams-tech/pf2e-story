@@ -79,7 +79,7 @@ Blockquote paragraphs (whose trimmed text both starts and ends with `"`, `'`, `\
 
 ### Dynamic text fitting
 
-`fitTextToPage` binary-searches font size between 10 and 22 px so the body text fits without scrolling. It runs once via `document.fonts.ready`, on every flip (`_fitCurrentTextPage`), and on debounced window resize. If you change page padding, font, or text rendering, retest fit on the smallest mobile viewport.
+`fitTextToPage` in `js/buildBook.js` is now a no-op kept for API compatibility — earlier versions binary-searched font size to fit body copy into a fixed page height. The current design uses a fixed 18px desktop / 16px mobile font and lets the body scroll inside its flex slot when the text is longer than the page can hold. The function is still called from `BookController._fitCurrentTextPage` and `_fitAllTextPages` so a future re-introduction of dynamic fitting wouldn't need new wiring.
 
 ## Editing content
 
