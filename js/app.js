@@ -3,6 +3,7 @@ import { buildBook } from './buildBook.js';
 import { AudioController } from './AudioController.js';
 import { BookController } from './BookController.js';
 import { UIController } from './UIController.js';
+import { installRotateHint } from './RotateHint.js';
 
 const bookEl = document.getElementById('book');
 const audioEl = document.getElementById('narration');
@@ -38,7 +39,11 @@ if (!window.St || !window.St.PageFlip) {
       if (titleEl) titleEl.textContent = story.title;
       document.title = story.title;
 
-      const pageFlip = buildBook(story, bookEl);
+      const initialLayout = window.matchMedia('(orientation: portrait) and (max-width: 720px)').matches
+        ? 'portrait'
+        : 'spread';
+
+      const pageFlip = buildBook(story, bookEl, { layout: initialLayout });
       const audio = new AudioController(audioEl);
       const book = new BookController({ story, pageFlip, audio, bookEl });
 
@@ -49,6 +54,7 @@ if (!window.St || !window.St.PageFlip) {
       };
 
       new UIController({ book, audio });
+      installRotateHint();
     })
     .catch(err => {
       console.error(err);
