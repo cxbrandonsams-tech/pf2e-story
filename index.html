@@ -138,15 +138,19 @@
     .kb-active { animation-fill-mode: forwards; }
 
     /* Word-sync highlighting — unspoken words sit faint, spoken words brighten */
-    .page-text-page .word {
+    .page-text-page .word,
+    .page-merged .word {
       opacity: 0.35;
       transition: opacity 280ms ease-out;
     }
-    .page-text-page .word.spoken { opacity: 1; }
-    .page-text-page:not(.reveal) .word { opacity: 1; }
+    .page-text-page .word.spoken,
+    .page-merged .word.spoken { opacity: 1; }
+    .page-text-page:not(.reveal) .word,
+    .page-merged:not(.reveal) .word { opacity: 1; }
 
     /* Reveal animation when the text page first appears */
-    .page-text-page.reveal .page-body {
+    .page-text-page.reveal .page-body,
+    .page-merged.reveal .page-body {
       animation: text-fade-in 800ms ease-out;
     }
     @keyframes text-fade-in {
@@ -243,13 +247,15 @@
       .book-outer-frame { --tw-ring-offset-width: 0; }
       /* Make the text body scrollable on mobile so word-sync auto-scroll can track
          the currently-spoken word; override the JS-set font size with a readable default. */
-      .page-text-page .page-body {
+      .page-text-page .page-body,
+      .page-merged .page-body {
         overflow-y: auto !important;
         font-size: 16px !important;
         scroll-behavior: smooth;
         scrollbar-width: none;
       }
-      .page-text-page .page-body::-webkit-scrollbar { display: none; }
+      .page-text-page .page-body::-webkit-scrollbar,
+      .page-merged .page-body::-webkit-scrollbar { display: none; }
     }
   </style>
 </head>
