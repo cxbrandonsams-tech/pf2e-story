@@ -45,5 +45,15 @@ function validate(story) {
     if (p.illustrationTitle !== undefined && typeof p.illustrationTitle !== 'string') {
       throw new Error(`Page ${i + 1} "illustrationTitle" must be a string if present`);
     }
+    if (p.paragraphImages !== undefined) {
+      if (!Array.isArray(p.paragraphImages) || p.paragraphImages.length === 0) {
+        throw new Error(`Page ${i + 1} "paragraphImages" must be a non-empty array of image paths if present`);
+      }
+      p.paragraphImages.forEach((src, j) => {
+        if (typeof src !== 'string' || !src) {
+          throw new Error(`Page ${i + 1} "paragraphImages[${j}]" must be a non-empty string`);
+        }
+      });
+    }
   });
 }

@@ -25,6 +25,7 @@ export function buildBook(story, containerEl, options = {}) {
         storyIndex: i,
         plateLabel: p.plateLabel,
         illustrationTitle: p.illustrationTitle,
+        paragraphImages: p.paragraphImages,
       }));
     } else {
       containerEl.appendChild(renderIllustrationPage({
@@ -32,6 +33,7 @@ export function buildBook(story, containerEl, options = {}) {
         storyIndex: i,
         plateLabel: p.plateLabel,
         illustrationTitle: p.illustrationTitle,
+        paragraphImages: p.paragraphImages,
       }));
       containerEl.appendChild(renderTextPage({
         text: p.text,
@@ -120,11 +122,24 @@ export function buildBook(story, containerEl, options = {}) {
 
 // Helper: find the <img> for a given story index. Works in both spread (where
 // the image lives on .page-illustration) and portrait merged (where the image
-// lives on .page-merged) layouts via a union selector.
+// lives on .page-merged) layouts via a union selector. On a paragraphImages
+// slideshow page this returns the FIRST img — Ken Burns would normally start
+// here but BookController skips it on slideshow pages, so the first-img match
+// is just a sentinel for the "is there any image" check.
 export function findIllustrationImg(containerEl, storyIndex) {
   return containerEl.querySelector(
     `.page-illustration[data-story-index="${storyIndex}"] img.page-image, ` +
     `.page-merged[data-story-index="${storyIndex}"] img.page-image`
+  );
+}
+
+// Helper: find the slideshow image stack for a given story index, or null if
+// the page isn't a slideshow page. Returns the .page-image-stack container
+// element which holds one .page-image per paragraph.
+export function findImageStack(containerEl, storyIndex) {
+  return containerEl.querySelector(
+    `.page-illustration[data-story-index="${storyIndex}"] .page-image-stack, ` +
+    `.page-merged[data-story-index="${storyIndex}"] .page-image-stack`
   );
 }
 
@@ -160,6 +175,74 @@ function escapeAttr(s) {
   return escapeText(s).replace(/"/g, '&quot;');
 }
 
+// Render the inner image markup for an illustration / merged page.
+//
+// - For a normal page (single image), emits one <img class="page-image">.
+// - For a slideshow page (paragraphImages), emits a .page-image-stack
+//   wrapper containing one <img class="page-image"> per entry. The first
+//   image is marked .visible (opacity 1) and the rest sit at opacity 0
+//   with a CSS transition for the crossfade. BookController toggles which
+//   one carries the .visible class as the spoken word advances.
+//
+// All images keep the same .page-image class so existing CSS rules
+// (object-cover, grayscale/sepia tint, error fallback) apply uniformly.
+function renderImageMarkup(image, paragraphImages) {
+  if (Array.isArray(paragraphImages) && paragraphImages.length > 0) {
+    const items = paragraphImages.map((src, i) => `
+      <img class="page-image absolute inset-0 w-full h-full object-cover grayscale-[0.2] sepia-[0.2]${i === 0 ? ' visible' : ''}" src="${escapeAttr(src)}" data-paragraph-index="${i}" alt=""/>
+    `).join('');
+    return `<div class="page-image-stack absolute inset-0">${items}</div>`;
+  }
+  return `<img class="page-image w-full h-full object-cover grayscale-[0.2] sepia-[0.2]" src="${escapeAttr(image)}" alt=""/>`;
+}
+
+// Render the body of words for a text/merged page. Tags each .word span
+// with `data-word-index` (used by word-sync highlighting) and
+// `data-paragraph-index` (used by the slideshow image swap to find the
+// current paragraph from the spoken word).
+//
+// `dropCapClass` is the per-layout class string for the drop-cap (the
+// spread text page uses text-7xl, the merged page uses text-5xl).
+// `paragraphClass` is the per-layout class for the regular <p> spacing
+// (spread = mb-4, merged = mb-3) and `blockquoteClass` similarly.
+function appendBody(body, text, dropCapClass, paragraphClass, blockquoteClass) {
+  const paragraphs = (text || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (paragraphs.length === 0) paragraphs.push('');
+
+  let globalWordIndex = 0;
+  paragraphs.forEach((chunk, pi) => {
+    const trimmed = chunk.trim();
+    const isBlockquote = OPENING_QUOTE.test(trimmed) && CLOSING_QUOTE.test(trimmed);
+    const p = document.createElement('p');
+    p.className = isBlockquote ? blockquoteClass : paragraphClass;
+
+    let remaining = chunk;
+    if (pi === 0 && !isBlockquote && chunk.length > 0) {
+      const firstChar = chunk[0];
+      const dropCap = document.createElement('span');
+      dropCap.className = `word drop-cap ${dropCapClass}`;
+      dropCap.dataset.wordIndex = String(globalWordIndex++);
+      dropCap.dataset.paragraphIndex = String(pi);
+      dropCap.textContent = firstChar;
+      p.appendChild(dropCap);
+      remaining = chunk.slice(1);
+    }
+
+    const words = remaining.split(/\s+/).filter(Boolean);
+    words.forEach((w, wi) => {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.wordIndex = String(globalWordIndex++);
+      span.dataset.paragraphIndex = String(pi);
+      span.textContent = w;
+      p.appendChild(span);
+      if (wi < words.length - 1) p.appendChild(document.createTextNode(' '));
+    });
+
+    body.appendChild(p);
+  });
+}
+
 function renderCoverPage({ className, image, title }) {
   const el = document.createElement('div');
   el.className = className;
@@ -177,7 +260,7 @@ function renderCoverPage({ className, image, title }) {
   return el;
 }
 
-function renderIllustrationPage({ image, storyIndex, plateLabel, illustrationTitle }) {
+function renderIllustrationPage({ image, storyIndex, plateLabel, illustrationTitle, paragraphImages }) {
   const el = document.createElement('div');
   el.className = 'page page-illustration parchment-texture relative flex items-center justify-center p-8 overflow-visible';
   el.dataset.storyIndex = String(storyIndex);
@@ -186,7 +269,7 @@ function renderIllustrationPage({ image, storyIndex, plateLabel, illustrationTit
     <div class="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-[#ffb782] m-4 pointer-events-none"></div>
     <div class="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-[#ffb782] m-4 pointer-events-none"></div>
     <div class="relative w-full h-full rounded-sm overflow-hidden shadow-inner">
-      <img class="page-image w-full h-full object-cover grayscale-[0.2] sepia-[0.2]" src="${escapeAttr(image)}" alt=""/>
+      ${renderImageMarkup(image, paragraphImages)}
       <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
       ${(plateLabel || illustrationTitle) ? `
       <div class="absolute bottom-6 left-6 right-6 pointer-events-none">
@@ -198,8 +281,9 @@ function renderIllustrationPage({ image, storyIndex, plateLabel, illustrationTit
       <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
     </div>
   `;
-  const img = el.querySelector('img.page-image');
-  if (img) img.onerror = () => { img.style.display = 'none'; };
+  el.querySelectorAll('img.page-image').forEach(img => {
+    img.onerror = () => { img.style.display = 'none'; };
+  });
   return el;
 }
 
@@ -215,6 +299,7 @@ function renderMergedPage({
   storyIndex,
   plateLabel,
   illustrationTitle,
+  paragraphImages,
 }) {
   // The .page element itself is owned by StPageFlip — its `display` is set
   // dynamically (block when visible, none when hidden). We mustn't put a
@@ -237,7 +322,7 @@ function renderMergedPage({
   imgWrap.className = 'page-merged-image relative w-full rounded-sm overflow-hidden shadow-inner flex-shrink-0 mb-4';
   imgWrap.style.height = '38%';
   imgWrap.innerHTML = `
-    <img class="page-image w-full h-full object-cover grayscale-[0.2] sepia-[0.2]" src="${escapeAttr(image)}" alt=""/>
+    ${renderImageMarkup(image, paragraphImages)}
     <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
     ${(plateLabel || illustrationTitle) ? `
     <div class="absolute bottom-3 left-4 right-4 pointer-events-none">
@@ -245,8 +330,9 @@ function renderMergedPage({
       ${illustrationTitle ? `<h3 class="font-headline text-base text-white italic drop-shadow-md">${escapeText(illustrationTitle)}</h3>` : ''}
     </div>` : ''}
   `;
-  const imgEl = imgWrap.querySelector('img.page-image');
-  if (imgEl) imgEl.onerror = () => { imgEl.style.display = 'none'; };
+  imgWrap.querySelectorAll('img.page-image').forEach(img => {
+    img.onerror = () => { img.style.display = 'none'; };
+  });
   inner.appendChild(imgWrap);
 
   // ---- Chapter heading (optional) ----
@@ -266,42 +352,13 @@ function renderMergedPage({
   // unmodified.
   const body = document.createElement('div');
   body.className = 'page-body flex-1 min-h-0 max-w-none text-[#3d2313] text-[16px] font-body leading-relaxed text-justify overflow-y-auto custom-scrollbar pr-2 relative z-10';
-
-  const paragraphs = (text || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
-  if (paragraphs.length === 0) paragraphs.push('');
-
-  let globalWordIndex = 0;
-  paragraphs.forEach((chunk, pi) => {
-    const trimmed = chunk.trim();
-    const isBlockquote = OPENING_QUOTE.test(trimmed) && CLOSING_QUOTE.test(trimmed);
-    const p = document.createElement('p');
-    p.className = isBlockquote
-      ? 'italic opacity-80 border-l-2 border-[#d87821]/30 pl-4 py-2 my-4'
-      : 'mb-3 relative';
-
-    let remaining = chunk;
-    if (pi === 0 && !isBlockquote && chunk.length > 0) {
-      const firstChar = chunk[0];
-      const dropCap = document.createElement('span');
-      dropCap.className = 'word drop-cap float-left text-5xl font-headline text-[#d87821] mr-2 mt-1 mb-[-0.4rem] leading-[1] drop-shadow-sm select-none';
-      dropCap.dataset.wordIndex = String(globalWordIndex++);
-      dropCap.textContent = firstChar;
-      p.appendChild(dropCap);
-      remaining = chunk.slice(1);
-    }
-
-    const words = remaining.split(/\s+/).filter(Boolean);
-    words.forEach((w, wi) => {
-      const span = document.createElement('span');
-      span.className = 'word';
-      span.dataset.wordIndex = String(globalWordIndex++);
-      span.textContent = w;
-      p.appendChild(span);
-      if (wi < words.length - 1) p.appendChild(document.createTextNode(' '));
-    });
-
-    body.appendChild(p);
-  });
+  appendBody(
+    body,
+    text,
+    'float-left text-5xl font-headline text-[#d87821] mr-2 mt-1 mb-[-0.4rem] leading-[1] drop-shadow-sm select-none',
+    'mb-3 relative',
+    'italic opacity-80 border-l-2 border-[#d87821]/30 pl-4 py-2 my-4'
+  );
   inner.appendChild(body);
 
   // ---- Footer ----
@@ -344,48 +401,18 @@ function renderTextPage({ text, chapter, storyTitle, pageNumber, storyIndex }) {
   // Body — flex-1 with min-h-0 so it actually shrinks to fit the available
   // inner height, then scrolls if the text is longer than the page can hold.
   // Without min-h-0 the flex item grows to its content size and overflows.
+  // The drop-cap class also carries the `word` class via appendBody — that
+  // dual-class trick lets the drop-cap participate in word-sync highlighting
+  // and stay in lockstep with the rest of the first word during reveal.
   const body = document.createElement('div');
   body.className = 'page-body flex-1 min-h-0 max-w-none text-[#3d2313] text-[18px] font-body leading-relaxed text-justify overflow-y-auto custom-scrollbar pr-3 relative z-10';
-
-  const paragraphs = (text || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
-  if (paragraphs.length === 0) paragraphs.push('');
-
-  let globalWordIndex = 0;
-  paragraphs.forEach((chunk, pi) => {
-    const trimmed = chunk.trim();
-    const isBlockquote = OPENING_QUOTE.test(trimmed) && CLOSING_QUOTE.test(trimmed);
-    const p = document.createElement('p');
-    p.className = isBlockquote
-      ? 'italic opacity-80 border-l-2 border-[#d87821]/30 pl-4 py-2 my-6'
-      : 'mb-4 relative';
-
-    // Drop-cap: first character of the first non-blockquote paragraph of the page.
-    // The drop-cap span carries the `word` class so it participates in word-sync
-    // highlighting — otherwise it would stay bright while adjacent words sit dim,
-    // producing a visible "I" / "n" seam in the first rendered word.
-    let remaining = chunk;
-    if (pi === 0 && !isBlockquote && chunk.length > 0) {
-      const firstChar = chunk[0];
-      const dropCap = document.createElement('span');
-      dropCap.className = 'word drop-cap float-left text-7xl font-headline text-[#d87821] mr-3 mt-2 mb-[-0.5rem] leading-[1] drop-shadow-sm select-none';
-      dropCap.dataset.wordIndex = String(globalWordIndex++);
-      dropCap.textContent = firstChar;
-      p.appendChild(dropCap);
-      remaining = chunk.slice(1);
-    }
-
-    const words = remaining.split(/\s+/).filter(Boolean);
-    words.forEach((w, wi) => {
-      const span = document.createElement('span');
-      span.className = 'word';
-      span.dataset.wordIndex = String(globalWordIndex++);
-      span.textContent = w;
-      p.appendChild(span);
-      if (wi < words.length - 1) p.appendChild(document.createTextNode(' '));
-    });
-
-    body.appendChild(p);
-  });
+  appendBody(
+    body,
+    text,
+    'float-left text-7xl font-headline text-[#d87821] mr-3 mt-2 mb-[-0.5rem] leading-[1] drop-shadow-sm select-none',
+    'mb-4 relative',
+    'italic opacity-80 border-l-2 border-[#d87821]/30 pl-4 py-2 my-6'
+  );
   inner.appendChild(body);
 
   // Page footer (lives inside the inner flex column)

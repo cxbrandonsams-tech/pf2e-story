@@ -212,6 +212,19 @@
     }
     .kb-active { animation-fill-mode: forwards; }
 
+    /* Slideshow image stack — every <img class="page-image"> sits absolutely
+       at inset:0 so they overlap perfectly. Default opacity 0; the .visible
+       one fades in. The crossfade handles character transitions on the
+       Chapter II "four adventurers" page. The opacity transition matches the
+       word-sync fade so the swap reads as part of the narration rhythm. */
+    .page-image-stack img.page-image {
+      opacity: 0;
+      transition: opacity 600ms ease-in-out;
+    }
+    .page-image-stack img.page-image.visible {
+      opacity: 1;
+    }
+
     /* Word-sync highlighting — unspoken words sit faint, spoken words brighten */
     .page-text-page .word,
     .page-merged .word {

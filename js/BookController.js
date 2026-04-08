@@ -2,7 +2,7 @@
 // audio, Ken Burns, and text reveal.
 
 import { KenBurns } from './KenBurns.js';
-import { buildBook, findIllustrationImg, findTextHost, fitTextToPage } from './buildBook.js';
+import { buildBook, findIllustrationImg, findImageStack, findTextHost, fitTextToPage } from './buildBook.js';
 
 export class BookController {
   constructor({ story, pageFlip, audio, bookEl }) {
@@ -272,6 +272,10 @@ export class BookController {
   _applyKenBurnsForCurrent() {
     const p = this.currentPageData();
     if (!p) return;
+    // Slideshow pages skip Ken Burns: each character image swaps in and out
+    // and the crossfade IS the visual motion. Stacking a KB animation on top
+    // makes the swap distracting.
+    if (p.paragraphImages) return;
     const idx = this.currentStoryPageIndex();
     const img = findIllustrationImg(this.bookEl, idx);
     if (!img) return;
@@ -283,6 +287,22 @@ export class BookController {
   _stopKenBurnsAll() {
     this.bookEl.querySelectorAll('.page-illustration img.page-image').forEach(img => {
       KenBurns.stop(img);
+    });
+  }
+
+  // Switch the visible image inside a slideshow .page-image-stack to the
+  // entry whose data-paragraph-index matches `paragraphIndex`. Clamps to the
+  // last image if the paragraph index is out of range (e.g. when the text
+  // has more paragraphs than slideshow images).
+  _setSlideshowImage(storyIdx, paragraphIndex) {
+    const stack = findImageStack(this.bookEl, storyIdx);
+    if (!stack) return;
+    const imgs = stack.querySelectorAll('img.page-image');
+    if (imgs.length === 0) return;
+    const target = Math.max(0, Math.min(imgs.length - 1, paragraphIndex));
+    imgs.forEach((img, i) => {
+      if (i === target) img.classList.add('visible');
+      else img.classList.remove('visible');
     });
   }
 
@@ -313,6 +333,9 @@ export class BookController {
     if (quill) quill.classList.remove('active');
     const bodyEl = el.querySelector('.page-body');
     if (bodyEl) bodyEl.scrollTop = 0;
+    // Reset slideshow to the first image so a re-entered page starts fresh.
+    const p = this.currentPageData();
+    if (p && p.paragraphImages) this._setSlideshowImage(idx, 0);
   }
 
   _onAudioTime(currentTime, duration) {
@@ -343,10 +366,23 @@ export class BookController {
       // any future code path that calls audio.reset() without flipping.
       if (quill) quill.classList.remove('active');
       if (bodyEl) bodyEl.scrollTop = 0;
+      // Slideshow: re-anchor to the first character image too.
+      const p0 = this.currentPageData();
+      if (p0 && p0.paragraphImages) this._setSlideshowImage(idx, 0);
       return;
     }
     const lastSpoken = words[target - 1];
     if (!lastSpoken || !bodyEl) return;
+
+    // Slideshow image swap: read the spoken word's paragraph index and set
+    // the matching .page-image as visible. The set is idempotent (no class
+    // churn when the same image is already visible) so it's cheap to call
+    // on every audio timeupdate.
+    const pCurr = this.currentPageData();
+    if (pCurr && pCurr.paragraphImages) {
+      const pi = parseInt(lastSpoken.dataset.paragraphIndex || '0', 10);
+      this._setSlideshowImage(idx, pi);
+    }
 
     // Auto-scroll the body so the currently-spoken word stays in view.
     // Design notes:

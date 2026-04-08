@@ -20,6 +20,17 @@
       "audio": "audio/02.mp3",
       "text": "About half an hour north of town lies a stretch of swamp called the Fogfen, and in the middle of that swamp stand the ruins of an old fortress. Rising above those ruins is a tall lighthouse known as the Gauntlight. This lighthouse, the Gauntlight, is strange for one simple reason. It stands nowhere near the ocean.\n\nNo one living remembers the Gauntlight ever shining.\n\nFor generations it has remained dark while moss and vines slowly claimed its lower walls. Over the years, brave or foolish explorers searched the ruins for treasure and found little more than rats and unstable floors. Eventually, the people of Otari decided the Gauntlight was simply an old mistake from a long-dead age, and they stopped worrying about it.\n\nAt least, until recently.",
       "kenBurns": "zoom-out"
+    },
+    {
+      "image": "images/brann.png",
+      "audio": "audio/03.mp3",
+      "paragraphImages": [
+        "images/brann.png",
+        "images/Alaric_Voss.png",
+        "images/viola.jpg",
+        "images/bug.png"
+      ],
+      "text": "Before rumors circulated and questions arose, four adventurers arrived in Otari for their own reasons. Brann Cragmantle grew up in a mining village in the mountains north of Otari, where the people learned early that stone and fire were not just materials but forces that could be controlled and manipulated. Bending the elements is a tradition passed to him, and he spent his youth splitting rock and shoring up tunnels, gradually learning to shape earth into walls or weapons and coax fire into doing precisely what he needed. He mastered both well enough that staying in the village started to feel like a waste of what he had learned.\n\nAlaric spent his formative years at a small academy in the great city of Absalom, working through books and failed experiments until magic started making sense. He finds dangerous things interesting rather than discouraging, which is sometimes not in the best interest of those standing near him.\n\nViola is a performer who long ago discovered that music is more than entertainment. Her voice and her playing carry a kind of energy that can calm a panicked ally or, with the right focus, send a rock hurtling through the air with enough force to crack a skull, and she understands that stories shape how people remember events long after they end.\n\nBug is a goblin. He is small, he is quick, and most people make the mistake of assuming that means he is harmless. He follows Viola because she makes sense to him in a way the world often does not, and when things turn violent he stops thinking and starts moving. He doesn't speak the common language very well, and he doesn't care to."
     }
   ]
 }
