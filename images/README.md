@@ -3,8 +3,9 @@
 Drop per-page illustrations here. Suggested naming:
 
 - `cover.png` — front cover
-- `back.png` — back cover
 - `01.png`, `02.png`, `03.png`, … — content pages in order
+
+The back cover currently uses a remote `placehold.co` URL (see `story.json` → `backCover.image`); add a local `back.png` here if you want to replace it.
 
 Reference them from `story.json` like:
 

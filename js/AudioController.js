@@ -1,5 +1,5 @@
 // Wraps a single <audio> element. Loads per-page audio, plays/pauses,
-// exposes volume/rate, emits 'ended', and supports brief "ducking" for SFX.
+// exposes volume/rate, and emits 'ended' / 'timeupdate' callbacks.
 
 export class AudioController {
   constructor(audioEl) {
@@ -8,8 +8,6 @@ export class AudioController {
     this.onMissing = null;
     this.onTimeUpdate = null; // (currentTime, duration) => void
     this.currentSrc = null;
-    this._baseVolume = 1.0;
-    this._duckTimer = null;
 
     this.el.addEventListener('ended', () => {
       if (this.onEnded) this.onEnded();
@@ -50,9 +48,7 @@ export class AudioController {
   get isPaused() { return this.el.paused; }
 
   setVolume(v) {
-    const clamped = Math.max(0, Math.min(1, v));
-    this._baseVolume = clamped;
-    this.el.volume = clamped;
+    this.el.volume = Math.max(0, Math.min(1, v));
   }
 
   setRate(r) { this.el.playbackRate = r; }
@@ -60,15 +56,5 @@ export class AudioController {
   reset() {
     this.el.pause();
     this.el.currentTime = 0;
-  }
-
-  // Temporarily drop volume to 50% of base for `ms` ms, then restore.
-  duck(ms = 400) {
-    if (this._duckTimer != null) clearTimeout(this._duckTimer);
-    this.el.volume = this._baseVolume * 0.5;
-    this._duckTimer = setTimeout(() => {
-      this.el.volume = this._baseVolume;
-      this._duckTimer = null;
-    }, ms);
   }
 }
