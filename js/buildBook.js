@@ -4,7 +4,6 @@
 
 export function buildBook(story, containerEl, options = {}) {
   const layout = options.layout === 'portrait' ? 'portrait' : 'spread';
-  console.log('buildBook layout:', layout);
   containerEl.innerHTML = '';
 
   // Front cover
@@ -14,21 +13,34 @@ export function buildBook(story, containerEl, options = {}) {
     title: story.title,
   }));
 
-  // Content: for each story page, render an illustration page then a text page.
+  // Content: render either spread (illustration + text) or portrait (merged) per story page.
   story.pages.forEach((p, i) => {
-    containerEl.appendChild(renderIllustrationPage({
-      image: p.image,
-      storyIndex: i,
-      plateLabel: p.plateLabel,
-      illustrationTitle: p.illustrationTitle,
-    }));
-    containerEl.appendChild(renderTextPage({
-      text: p.text,
-      chapter: p.chapter,
-      storyTitle: story.title,
-      pageNumber: i + 1,
-      storyIndex: i,
-    }));
+    if (layout === 'portrait') {
+      containerEl.appendChild(renderMergedPage({
+        image: p.image,
+        text: p.text,
+        chapter: p.chapter,
+        storyTitle: story.title,
+        pageNumber: i + 1,
+        storyIndex: i,
+        plateLabel: p.plateLabel,
+        illustrationTitle: p.illustrationTitle,
+      }));
+    } else {
+      containerEl.appendChild(renderIllustrationPage({
+        image: p.image,
+        storyIndex: i,
+        plateLabel: p.plateLabel,
+        illustrationTitle: p.illustrationTitle,
+      }));
+      containerEl.appendChild(renderTextPage({
+        text: p.text,
+        chapter: p.chapter,
+        storyTitle: story.title,
+        pageNumber: i + 1,
+        storyIndex: i,
+      }));
+    }
   });
 
   // Back cover
