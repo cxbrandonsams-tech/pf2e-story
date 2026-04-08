@@ -44,7 +44,9 @@ export function buildBook(story, containerEl) {
     maxWidth: 900,
     minHeight: 360,
     maxHeight: 1152,
-    maxShadowOpacity: 0.75,
+    // Disable page-flip shadow gradients so the parchment surface stays one solid
+    // color. CSS in index.html also hides any leftover .stf__*Shadow nodes.
+    maxShadowOpacity: 0,
     flippingTime: 1200,
     showCover: true,
     // omit usePortrait so StPageFlip auto-switches to single-page on narrow viewports

@@ -221,15 +221,19 @@ export class BookController {
     const lastSpoken = words[target - 1];
     if (!lastSpoken || !bodyEl) return;
 
-    const isMobile = window.matchMedia('(max-width: 720px)').matches;
-    if (isMobile) {
-      const wordTop = lastSpoken.offsetTop;
-      const targetScroll = Math.max(0, wordTop - bodyEl.clientHeight * 0.35);
-      if (Math.abs(bodyEl.scrollTop - targetScroll) > 4) {
-        bodyEl.scrollTop = targetScroll;
-      }
+    // Auto-scroll the body so the currently-spoken word stays in view.
+    // Applies on both desktop and mobile now that the desktop body is also a
+    // scrollable flex slot. The 0.35 factor keeps the spoken word about a third
+    // of the way down the visible area so the reader sees upcoming text below.
+    const wordTop = lastSpoken.offsetTop;
+    const targetScroll = Math.max(0, wordTop - bodyEl.clientHeight * 0.35);
+    if (Math.abs(bodyEl.scrollTop - targetScroll) > 4) {
+      bodyEl.scrollTop = targetScroll;
     }
 
+    // Quill cursor — desktop only. On mobile the auto-scroll is the visual
+    // pointer; on desktop the quill floats next to the spoken word.
+    const isMobile = window.matchMedia('(max-width: 720px)').matches;
     if (!quill) return;
     if (isMobile) { quill.classList.remove('active'); return; }
     quill.classList.add('active');

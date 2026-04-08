@@ -97,11 +97,16 @@
       display: flex !important;
       flex-direction: column !important;
     }
-    .parchment-texture::before {
-      content: ""; position: absolute; inset: 0;
-      background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDnrW5Rf3TCvMBbyA7wjhMuUFa3pdUXs1Mbtuih842cukGdCY_ikBKDjiLeoPj9gS9Jhhzu54T9CAd4XyJ_S6LlnZJuWWEmqQPoTRHrgC2afEIOo5aCm_SGLSYLApYXiWTKojR92d0Og2wnzylcdfJDSB3c_YxiDrbsxG0qoCiCgwZ4jo2QPCttwSGOc-893SSnnqd57mDVIxMLwY7K2i11q68Qqks7KjaOJwbILZqqesrHYJ5Sx7buronkfteEhrnhu4X3xbfs230);
-      opacity: 0.2; pointer-events: none;
-    }
+    /* The parchment surface is intentionally flat — no ::before texture overlay,
+       no gradient, no shadow. Just one solid color across the entire page. */
+
+    /* Hide StPageFlip's static shadow nodes so they don't darken the page near
+       the spine or edges. maxShadowOpacity:0 in buildBook.js handles the dynamic
+       shadows during flip; this catches any static ones the library renders. */
+    .stf__outerShadow,
+    .stf__innerShadow,
+    .stf__hardShadow,
+    .stf__hardInnerShadow { display: none !important; }
 
     .desk-bg { background: radial-gradient(circle at center, #2d1b0e 0%, #101418 100%); }
 
