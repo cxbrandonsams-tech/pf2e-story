@@ -2,7 +2,9 @@
 // Each story page becomes TWO book pages: an illustration page and a text page.
 // This is the ONLY module that touches StPageFlip — isolates the library.
 
-export function buildBook(story, containerEl) {
+export function buildBook(story, containerEl, options = {}) {
+  const layout = options.layout === 'portrait' ? 'portrait' : 'spread';
+  console.log('buildBook layout:', layout);
   containerEl.innerHTML = '';
 
   // Front cover
