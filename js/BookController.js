@@ -12,6 +12,12 @@ export class BookController {
     this.pageFlip = pageFlip;
     this.audio = audio;
     this.bookEl = bookEl;
+    // StPageFlip's destroy() detaches the mount element from the DOM, so to
+    // rebuild we re-attach a fresh mount under the same parent. Capture both
+    // the parent and the original mount attributes (id, className) once.
+    this._bookParent = bookEl.parentElement;
+    this._bookId = bookEl.id;
+    this._bookOriginalClass = 'w-full h-full';
     this._currentLayout = this._isPortraitMobile() ? 'portrait' : 'spread';
     this.isPlaying = false;
     this.onChange = null;
@@ -45,6 +51,20 @@ export class BookController {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => this._fitAllTextPages(), 150);
     });
+
+    // Orientation listener: when the user rotates a phone, rebuild the book
+    // with the appropriate layout. Uses matchMedia change events so it only
+    // fires on real orientation changes (not generic resize).
+    const orientationMQ = window.matchMedia('(orientation: portrait) and (max-width: 720px)');
+    const onOrientationChange = (e) => {
+      this._rebuildBook(e.matches ? 'portrait' : 'spread');
+    };
+    if (orientationMQ.addEventListener) {
+      orientationMQ.addEventListener('change', onOrientationChange);
+    } else if (orientationMQ.addListener) {
+      // Safari < 14 fallback
+      orientationMQ.addListener(onOrientationChange);
+    }
   }
 
   _wirePageFlipEvents() {
@@ -74,6 +94,14 @@ export class BookController {
     const wasPlaying = this.isPlaying;
     this.pause();
     this.pageFlip.destroy();
+    // StPageFlip.destroy() removes the mount element from the DOM. Create a
+    // fresh mount with the same id/class under the saved parent so subsequent
+    // rebuilds keep working.
+    const fresh = document.createElement('div');
+    fresh.id = this._bookId;
+    fresh.className = this._bookOriginalClass;
+    this._bookParent.appendChild(fresh);
+    this.bookEl = fresh;
     this._currentLayout = newLayout;
     this.pageFlip = buildBook(this.story, this.bookEl, { layout: newLayout });
     this._wirePageFlipEvents();
@@ -87,6 +115,11 @@ export class BookController {
     } else {
       targetBookIdx = 0;
     }
+    // Restore isPlaying BEFORE flipping so the flip handler (which checks
+    // this.isPlaying when the flip lands) re-starts narration on the target
+    // page. Calling play() here would race with the in-flight flip and could
+    // emit an extra flipNext() (the new pageFlip starts at idx 0).
+    this.isPlaying = wasPlaying;
     if (targetBookIdx > 0) {
       this.pageFlip.flip(targetBookIdx);
       // Flip handler (wired via _wirePageFlipEvents) will load audio,
@@ -97,7 +130,6 @@ export class BookController {
       this._applyKenBurnsForCurrent();
       if (this.onChange) this.onChange();
     }
-    if (wasPlaying) this.play();
   }
 
   currentStoryPageIndex() {
