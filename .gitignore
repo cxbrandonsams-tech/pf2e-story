@@ -7,3 +7,6 @@ node_modules/
 # Playwright MCP screenshot artifacts
 .playwright-mcp/
 stitch-*.png
+
+# Superpowers brainstorm visual companion sessions
+.superpowers/
