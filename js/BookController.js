@@ -17,7 +17,7 @@ export class BookController {
     // the parent and the original mount attributes (id, className) once.
     this._bookParent = bookEl.parentElement;
     this._bookId = bookEl.id;
-    this._bookOriginalClass = 'w-full h-full';
+    this._bookOriginalClass = bookEl.className;
     this._currentLayout = this._isPortraitMobile() ? 'portrait' : 'spread';
     this.isPlaying = false;
     this.onChange = null;
