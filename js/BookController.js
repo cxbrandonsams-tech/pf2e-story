@@ -15,7 +15,14 @@ export class BookController {
     // the parent and the original mount attributes (id, className) once.
     this._bookParent = bookEl.parentElement;
     this._bookId = bookEl.id;
-    this._bookOriginalClass = bookEl.className;
+    // Scrub StPageFlip's runtime classes (e.g., stf__parent) from the captured
+    // original — buildBook has already mounted on bookEl by the time this
+    // constructor runs, so bookEl.className includes them. Storing the cleaned
+    // string keeps _rebuildBook's fresh mount in a "before StPageFlip" state.
+    this._bookOriginalClass = bookEl.className
+      .replace(/\bstf__\S+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     this._currentLayout = this._isPortraitMobile() ? 'portrait' : 'spread';
     this.isPlaying = false;
     this.onChange = null;
