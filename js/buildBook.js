@@ -140,9 +140,21 @@ const OPENING_QUOTE = /^[\u201C"']/;
 const CLOSING_QUOTE = /[\u201D"']$/;
 
 function renderTextPage({ text, chapter, storyTitle, pageNumber, storyIndex }) {
+  // The .page element itself is owned by StPageFlip — its `display` is set
+  // dynamically (block when visible, none when hidden). We mustn't put a
+  // `display: flex` rule on it or override that with !important, or hidden
+  // text pages stay visible and overlap the cover. The flex layout that
+  // constrains the body lives in an inner wrapper instead, positioned
+  // absolutely to fill the page. The page is purely the StPageFlip mount.
   const el = document.createElement('div');
-  el.className = 'page page-text-page parchment-texture relative p-10 md:p-16 flex flex-col overflow-hidden custom-scrollbar';
+  el.className = 'page page-text-page parchment-texture relative overflow-hidden';
   el.dataset.storyIndex = String(storyIndex);
+
+  // Inner wrapper: flex column, fills the page minus padding. Owns the
+  // header / body / footer flex layout. Independent of the .page's display.
+  const inner = document.createElement('div');
+  inner.className = 'page-text-inner absolute inset-0 flex flex-col p-10 md:p-16';
+  el.appendChild(inner);
 
   // Chapter header
   if (chapter) {
@@ -152,11 +164,11 @@ function renderTextPage({ text, chapter, storyTitle, pageNumber, storyIndex }) {
       <h2 class="font-headline text-3xl md:text-4xl text-[#301400] leading-tight mb-2">${escapeText(chapter)}</h2>
       <div class="h-px w-24 bg-[#d87821]/40"></div>
     `;
-    el.appendChild(header);
+    inner.appendChild(header);
   }
 
   // Body — flex-1 with min-h-0 so it actually shrinks to fit the available
-  // page height, then scrolls if the text is longer than the page can hold.
+  // inner height, then scrolls if the text is longer than the page can hold.
   // Without min-h-0 the flex item grows to its content size and overflows.
   const body = document.createElement('div');
   body.className = 'page-body flex-1 min-h-0 max-w-none text-[#3d2313] text-[18px] font-body leading-relaxed text-justify overflow-y-auto custom-scrollbar pr-3 relative z-10';
@@ -200,19 +212,21 @@ function renderTextPage({ text, chapter, storyTitle, pageNumber, storyIndex }) {
 
     body.appendChild(p);
   });
-  el.appendChild(body);
+  inner.appendChild(body);
 
-  // Quill cursor — follows the current spoken word while audio plays.
+  // Page footer (lives inside the inner flex column)
+  const footer = document.createElement('div');
+  footer.className = 'mt-auto pt-6 flex justify-center border-t border-black/5 relative z-10';
+  footer.innerHTML = `<span class="font-label text-[10px] tracking-widest text-[#3d2313]/60 uppercase">Page ${pageNumber} — ${escapeText(storyTitle)}</span>`;
+  inner.appendChild(footer);
+
+  // Quill cursor — positioned absolutely against .page-text-page (NOT inner)
+  // because BookController._onAudioTime computes its coordinates from the body
+  // element's offsetParent chain.
   const quill = document.createElement('div');
   quill.className = 'quill';
   quill.textContent = '\u{1F58B}'; // fountain pen
   el.appendChild(quill);
-
-  // Page footer
-  const footer = document.createElement('div');
-  footer.className = 'mt-auto pt-6 flex justify-center border-t border-black/5 relative z-10';
-  footer.innerHTML = `<span class="font-label text-[10px] tracking-widest text-[#3d2313]/60 uppercase">Page ${pageNumber} — ${escapeText(storyTitle)}</span>`;
-  el.appendChild(footer);
 
   // Rune corner decoration
   const rune = document.createElement('div');

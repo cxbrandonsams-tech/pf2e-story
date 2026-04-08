@@ -87,16 +87,12 @@
 
     .parchment-texture { background-color: #ecd9a8; position: relative; }
 
-    /* StPageFlip writes `display: block` as an inline style on each .page when
-       it positions them absolutely. That clobbers our `flex flex-col` Tailwind
-       class on the text page, which in turn breaks the body's flex-1 sizing
-       and lets it grow to content height (overflowing the page). Forcing flex
-       layout back on with !important restores proper height constraint so the
-       body can scroll inside its slot. */
-    .page-text-page {
-      display: flex !important;
-      flex-direction: column !important;
-    }
+    /* The .page-text-page element is owned by StPageFlip — it dynamically sets
+       inline `display: block` (when visible) or `display: none` (when hidden).
+       We must NOT override that with !important or hidden pages stay visible
+       and overlap the cover. The flex layout that constrains the body lives in
+       a child .page-text-inner wrapper instead (see renderTextPage in
+       buildBook.js). */
     /* The parchment surface is intentionally flat — no ::before texture overlay,
        no gradient, no shadow. Just one solid color across the entire page. */
 
