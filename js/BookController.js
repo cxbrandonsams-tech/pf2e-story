@@ -98,7 +98,15 @@ export class BookController {
     const wasOnBackCover = bookIdxBefore > oldContentPages;
     const wasPlaying = this.isPlaying;
     this.pause();
-    this.pageFlip.destroy();
+    // Wrap destroy() defensively: if a flip animation was in flight at the
+    // moment the user rotated, StPageFlip's internal animator can throw after
+    // its canvas is detached. We still want to proceed with rebuild so the
+    // controller reaches a consistent state.
+    try {
+      this.pageFlip.destroy();
+    } catch (err) {
+      console.warn('StPageFlip.destroy() threw during rebuild:', err);
+    }
     // StPageFlip.destroy() removes the mount element from the DOM. Create a
     // fresh mount with the same id/class under the saved parent so subsequent
     // rebuilds keep working.
