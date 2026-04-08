@@ -1,5 +1,6 @@
 // Applies a Ken Burns (slow zoom/pan) animation to an image element.
-// The CSS @keyframes rules (kb-zoom-in-center, kb-pan-left, etc.) live in css/style.css.
+// The CSS @keyframes rules (kb-zoom-in-center, kb-pan-left, etc.) live in the
+// inline <style> block of index.html.
 
 const VALID_MODES = new Set([
   'zoom-in-center',

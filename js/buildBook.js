@@ -182,11 +182,15 @@ function renderTextPage({ text, chapter, storyTitle, pageNumber, storyIndex }) {
       : 'mb-4 relative';
 
     // Drop-cap: first character of the first non-blockquote paragraph of the page.
+    // The drop-cap span carries the `word` class so it participates in word-sync
+    // highlighting — otherwise it would stay bright while adjacent words sit dim,
+    // producing a visible "I" / "n" seam in the first rendered word.
     let remaining = chunk;
     if (pi === 0 && !isBlockquote && chunk.length > 0) {
       const firstChar = chunk[0];
       const dropCap = document.createElement('span');
-      dropCap.className = 'drop-cap float-left text-7xl font-headline text-[#d87821] mr-3 mt-2 mb-[-0.5rem] leading-[1] drop-shadow-sm select-none';
+      dropCap.className = 'word drop-cap float-left text-7xl font-headline text-[#d87821] mr-3 mt-2 mb-[-0.5rem] leading-[1] drop-shadow-sm select-none';
+      dropCap.dataset.wordIndex = String(globalWordIndex++);
       dropCap.textContent = firstChar;
       p.appendChild(dropCap);
       remaining = chunk.slice(1);

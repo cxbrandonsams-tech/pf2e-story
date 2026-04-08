@@ -243,6 +243,11 @@
 </head>
 <body class="bg-background text-on-surface font-body selection:bg-primary/30 min-h-screen flex flex-col overflow-hidden desk-bg">
 
+  <!-- Tailwind Play CDN safelist: classes added dynamically via innerHTML in js/buildBook.js
+       aren't always caught by the CDN's MutationObserver. Referencing them in a hidden node
+       forces the CDN to generate the corresponding rules during its initial scan. -->
+  <div class="hidden md:p-16 md:text-4xl text-3xl"></div>
+
   <!-- Top app bar -->
   <header class="bg-[#101418] flex justify-between items-center w-full px-8 py-4 z-50 shadow-2xl shadow-black/60 sticky top-0">
     <h1 id="story-title" class="font-['Noto_Serif'] font-bold tracking-tight text-2xl md:text-3xl text-[#ffb782] drop-shadow-sm"></h1>
