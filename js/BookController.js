@@ -27,6 +27,26 @@ export class BookController {
     this.isPlaying = false;
     this.onChange = null;
     this._timerId = null;
+    // When the user manually scrolls the page-body (wheel or touch), we
+    // suspend the leading-edge auto-scroll until this timestamp passes, so
+    // they can read backwards/forwards without being yanked back to the
+    // currently-spoken word every audio tick. Cleared on play() so resuming
+    // narration immediately re-engages auto-scroll.
+    this._suppressAutoScrollUntil = 0;
+
+    // Wire user-activity detection. Capture phase + window-level so it
+    // works regardless of which page-body is active and survives every
+    // BookController._rebuildBook (which detaches the old book element
+    // entirely). The handler only fires when the activity originates inside
+    // a .page-body — clicks on the controls or the cover image are ignored.
+    const onUserActivity = (e) => {
+      const t = e.target;
+      if (t && t.closest && t.closest('.page-body')) {
+        this._suppressAutoScrollUntil = Date.now() + 5000;
+      }
+    };
+    window.addEventListener('wheel', onUserActivity, { passive: true, capture: true });
+    window.addEventListener('touchstart', onUserActivity, { passive: true, capture: true });
 
     this.audio.onEnded = () => {
       if (!this.isPlaying) return;
@@ -294,6 +314,11 @@ export class BookController {
     const bodyEl = el.querySelector('.page-body');
     const quill = el.querySelector('.quill');
     if (target === 0) {
+      // Audio at the very start of the page (currentTime ≤ 0.05). Defensive:
+      // re-anchor the body scroll to the top so a re-played page always
+      // shows the spoken word's neighborhood. The flip handler also resets
+      // bodyEl.scrollTop to 0 on every page change, but this branch covers
+      // any future code path that calls audio.reset() without flipping.
       if (quill) quill.classList.remove('active');
       if (bodyEl) bodyEl.scrollTop = 0;
       return;
@@ -302,23 +327,38 @@ export class BookController {
     if (!lastSpoken || !bodyEl) return;
 
     // Auto-scroll the body so the currently-spoken word stays in view.
-    // Applies on both desktop and mobile now that the desktop body is also a
-    // scrollable flex slot. The 0.35 factor keeps the spoken word about a third
-    // of the way down the visible area so the reader sees upcoming text below.
+    // Design notes:
     //
-    // We can't use lastSpoken.offsetTop directly: each <p> has class
-    // 'relative' (so blockquote borders / drop-caps anchor correctly), which
-    // makes the paragraph the offsetParent of every word span. offsetTop is
-    // therefore the word's offset INSIDE its paragraph, not inside the body —
-    // a small number that pins targetScroll near 0 forever. Compute the
-    // word's body-relative top via getBoundingClientRect + scrollTop instead.
+    // We can't use lastSpoken.offsetTop here. Each <p> has class 'relative'
+    // (so blockquote borders / drop-caps anchor correctly), which makes the
+    // paragraph the offsetParent of every word span. offsetTop is therefore
+    // the word's offset INSIDE its paragraph, not inside the body — small
+    // values that would pin scroll near 0 forever. Use the rect difference
+    // (which is layout-flush-aware and scroll-aware) instead.
+    //
+    // Trigger model: do NOT continuously chase the spoken word. That fights
+    // the reader if they manually scroll ahead to peek at upcoming text — the
+    // next timeupdate yanks them back. Instead, only auto-scroll when the
+    // spoken word has crossed into the lower 35% of the body. At that point
+    // we jump scroll so the word sits ~35% from the top, leaving most of the
+    // visible body for the upcoming text. Between triggers the user is free
+    // to scroll up or down without being yanked.
+    //
+    // Pair with `scroll-behavior: smooth` on .page-body so each trigger
+    // animates instead of snapping.
     const wordRectForScroll = lastSpoken.getBoundingClientRect();
     const bodyRectForScroll = bodyEl.getBoundingClientRect();
-    const wordTopInBody = (wordRectForScroll.top - bodyRectForScroll.top) + bodyEl.scrollTop;
-    const maxScroll = Math.max(0, bodyEl.scrollHeight - bodyEl.clientHeight);
-    const targetScroll = Math.max(0, Math.min(maxScroll, wordTopInBody - bodyEl.clientHeight * 0.35));
-    if (Math.abs(bodyEl.scrollTop - targetScroll) > 4) {
-      bodyEl.scrollTop = targetScroll;
+    const wordVisibleTop = wordRectForScroll.top - bodyRectForScroll.top;
+    const triggerLine   = bodyEl.clientHeight * 0.65;
+    const restLine      = bodyEl.clientHeight * 0.35;
+    const userActive    = Date.now() < this._suppressAutoScrollUntil;
+    if (wordVisibleTop > triggerLine && !userActive) {
+      const wordTopInBody = wordVisibleTop + bodyEl.scrollTop;
+      const maxScroll = Math.max(0, bodyEl.scrollHeight - bodyEl.clientHeight);
+      const targetScroll = Math.max(0, Math.min(maxScroll, wordTopInBody - restLine));
+      if (Math.abs(bodyEl.scrollTop - targetScroll) > 4) {
+        bodyEl.scrollTop = targetScroll;
+      }
     }
 
     // Quill cursor — desktop only. On mobile the auto-scroll is the visual
@@ -336,7 +376,7 @@ export class BookController {
     const bodyRect = bodyEl.getBoundingClientRect();
     // Hide the quill when the word has scrolled outside the visible body
     // (e.g., we're at the bottom of the body and the word fell off the
-    // top, or we just started and the word hasn't been reached yet).
+    // top, or the user has scrolled past the spoken word).
     const wordVisible =
       wordRect.bottom > bodyRect.top &&
       wordRect.top    < bodyRect.bottom;
@@ -348,6 +388,9 @@ export class BookController {
 
   play() {
     this.isPlaying = true;
+    // Resuming play should re-engage auto-scroll, even if the user was
+    // manually scrolling moments ago.
+    this._suppressAutoScrollUntil = 0;
     // If on the cover, flip open to the first spread — the flip handler will
     // then auto-start the page's narration because isPlaying is true.
     if (this.pageFlip.getCurrentPageIndex() === 0) {
