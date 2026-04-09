@@ -26,6 +26,8 @@ export function buildBook(story, containerEl, options = {}) {
         plateLabel: p.plateLabel,
         illustrationTitle: p.illustrationTitle,
         paragraphImages: p.paragraphImages,
+        imageMobile: p.imageMobile,
+        cropY: p.cropY,
       }));
     } else {
       containerEl.appendChild(renderIllustrationPage({
@@ -179,21 +181,47 @@ function escapeAttr(s) {
 //
 // - For a normal page (single image), emits one <img class="page-image">.
 // - For a slideshow page (paragraphImages), emits a .page-image-stack
-//   wrapper containing one <img class="page-image"> per entry. The first
-//   image is marked .visible (opacity 1) and the rest sit at opacity 0
-//   with a CSS transition for the crossfade. BookController toggles which
-//   one carries the .visible class as the spoken word advances.
+//   wrapper containing one <img class="page-image"> per entry. String
+//   entries and { src, cropY } object entries are both accepted and
+//   normalized here. The first image is marked .visible (opacity 1) and
+//   the rest sit at opacity 0 with a CSS transition for the crossfade.
+//   BookController toggles which one carries the .visible class as the
+//   spoken word advances.
+//
+// The `opts` arg carries render context: `layout` is 'portrait' or
+// 'spread'; `imageMobile` and `cropY` are the page-level mobile overrides.
+// In 'portrait' layout only, `imageMobile` (if set) replaces `image` for
+// the single-image case, and every emitted <img> gets an inline
+// `object-position: 50% <cropY>` — per-slideshow-entry cropY wins over
+// the page-level one. 'spread' layout ignores all three and emits the
+// same markup it always has.
 //
 // All images keep the same .page-image class so existing CSS rules
 // (object-cover, grayscale/sepia tint, error fallback) apply uniformly.
-function renderImageMarkup(image, paragraphImages) {
+function renderImageMarkup(image, paragraphImages, opts) {
+  const { layout, imageMobile, cropY } = opts;
+  const isPortrait = layout === 'portrait';
   if (Array.isArray(paragraphImages) && paragraphImages.length > 0) {
-    const items = paragraphImages.map((src, i) => `
-      <img class="page-image absolute inset-0 w-full h-full object-cover grayscale-[0.2] sepia-[0.2]${i === 0 ? ' visible' : ''}" src="${escapeAttr(src)}" data-paragraph-index="${i}" alt=""/>
-    `).join('');
+    const entries = paragraphImages.map(entry =>
+      typeof entry === 'string'
+        ? { src: entry, cropY: undefined }
+        : { src: entry.src, cropY: entry.cropY }
+    );
+    const items = entries.map((entry, i) => {
+      const resolved = entry.cropY ?? cropY ?? '50%';
+      const styleAttr = isPortrait ? ` style="object-position: 50% ${escapeAttr(resolved)}"` : '';
+      return `
+      <img class="page-image absolute inset-0 w-full h-full object-cover grayscale-[0.2] sepia-[0.2]${i === 0 ? ' visible' : ''}" src="${escapeAttr(entry.src)}" data-paragraph-index="${i}" alt=""${styleAttr}/>
+    `;
+    }).join('');
     return `<div class="page-image-stack absolute inset-0">${items}</div>`;
   }
-  return `<img class="page-image w-full h-full object-cover grayscale-[0.2] sepia-[0.2]" src="${escapeAttr(image)}" alt=""/>`;
+  const effectiveSrc = (isPortrait && typeof imageMobile === 'string' && imageMobile.length > 0)
+    ? imageMobile
+    : image;
+  const resolved = cropY ?? '50%';
+  const styleAttr = isPortrait ? ` style="object-position: 50% ${escapeAttr(resolved)}"` : '';
+  return `<img class="page-image w-full h-full object-cover grayscale-[0.2] sepia-[0.2]" src="${escapeAttr(effectiveSrc)}" alt=""${styleAttr}/>`;
 }
 
 // Render the body of words for a text/merged page. Tags each .word span
@@ -269,7 +297,7 @@ function renderIllustrationPage({ image, storyIndex, plateLabel, illustrationTit
     <div class="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-[#ffb782] m-4 pointer-events-none"></div>
     <div class="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-[#ffb782] m-4 pointer-events-none"></div>
     <div class="relative w-full h-full rounded-sm overflow-hidden shadow-inner">
-      ${renderImageMarkup(image, paragraphImages)}
+      ${renderImageMarkup(image, paragraphImages, { layout: 'spread' })}
       <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
       ${(plateLabel || illustrationTitle) ? `
       <div class="absolute bottom-6 left-6 right-6 pointer-events-none">
@@ -300,6 +328,8 @@ function renderMergedPage({
   plateLabel,
   illustrationTitle,
   paragraphImages,
+  imageMobile,
+  cropY,
 }) {
   // The .page element itself is owned by StPageFlip — its `display` is set
   // dynamically (block when visible, none when hidden). We mustn't put a
@@ -322,7 +352,7 @@ function renderMergedPage({
   imgWrap.className = 'page-merged-image relative w-full rounded-sm overflow-hidden shadow-inner flex-shrink-0 mb-4';
   imgWrap.style.height = '38%';
   imgWrap.innerHTML = `
-    ${renderImageMarkup(image, paragraphImages)}
+    ${renderImageMarkup(image, paragraphImages, { layout: 'portrait', imageMobile, cropY })}
     <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
     ${(plateLabel || illustrationTitle) ? `
     <div class="absolute bottom-3 left-4 right-4 pointer-events-none">

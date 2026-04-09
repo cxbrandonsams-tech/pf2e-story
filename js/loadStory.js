@@ -45,15 +45,46 @@ function validate(story) {
     if (p.illustrationTitle !== undefined && typeof p.illustrationTitle !== 'string') {
       throw new Error(`Page ${i + 1} "illustrationTitle" must be a string if present`);
     }
+    if (p.cropY !== undefined) {
+      const err = validateCropYFormat(p.cropY);
+      if (err) throw new Error(`Page ${i + 1} "cropY" ${err}`);
+    }
+    if (p.imageMobile !== undefined) {
+      if (typeof p.imageMobile !== 'string' || !p.imageMobile) {
+        throw new Error(`Page ${i + 1} "imageMobile" must be a non-empty string if present`);
+      }
+    }
     if (p.paragraphImages !== undefined) {
       if (!Array.isArray(p.paragraphImages) || p.paragraphImages.length === 0) {
         throw new Error(`Page ${i + 1} "paragraphImages" must be a non-empty array of image paths if present`);
       }
-      p.paragraphImages.forEach((src, j) => {
-        if (typeof src !== 'string' || !src) {
-          throw new Error(`Page ${i + 1} "paragraphImages[${j}]" must be a non-empty string`);
+      p.paragraphImages.forEach((entry, j) => {
+        if (typeof entry === 'string') {
+          if (!entry) {
+            throw new Error(`Page ${i + 1} "paragraphImages[${j}]" must be a non-empty string`);
+          }
+          return;
         }
+        if (entry && typeof entry === 'object') {
+          if (typeof entry.src !== 'string' || !entry.src) {
+            throw new Error(`Page ${i + 1} "paragraphImages[${j}].src" must be a non-empty string`);
+          }
+          if (entry.cropY !== undefined) {
+            const err = validateCropYFormat(entry.cropY);
+            if (err) throw new Error(`Page ${i + 1} "paragraphImages[${j}].cropY" ${err}`);
+          }
+          return;
+        }
+        throw new Error(`Page ${i + 1} "paragraphImages[${j}]" must be a non-empty string or an object with a "src" string`);
       });
     }
   });
+}
+
+function validateCropYFormat(value) {
+  if (typeof value !== 'string') return 'must be a string of the form "N%" with N in [0,100]';
+  if (!/^\d+(\.\d+)?%$/.test(value)) return 'must be a string of the form "N%" with N in [0,100]';
+  const n = parseFloat(value);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return 'must be in the range 0% to 100%';
+  return null;
 }
